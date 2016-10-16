@@ -1,19 +1,20 @@
-import Rpi.GPIO as GPIO
+import RPi.GPIO as GPIO
+GPIO.setmode(GPIO.BCM)
 from lib_nrf24 import NRF24
 import time
 import spidev
 
-GPIO.setmode(GPIO.BCM)
+
 
 pipes=[[0xE8, 0xE8, 0xF0, 0xF0,0xE1],[0xF0, 0xF0, 0xF0, 0xF0, 0xE1]]
 
 radio = NRF24(GPIO, spidev.SpiDev())
-radio.begin(0,17)
+radio.begin(0,25)
 
 radio.setPayloadSize(32)
 radio.setChannel(0x76)
-radio.setDataRate(NRF.BR_1MBPS)
-radio.setPALevel(NRF.PA_MIN)
+radio.setDataRate(NRF24.BR_1MBPS)
+radio.setPALevel(NRF24.PA_MIN)
 
 radio.setAutoAck(True)
 radio.enableDynamicPayloads()
