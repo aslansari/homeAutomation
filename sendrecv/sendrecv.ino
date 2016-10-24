@@ -17,7 +17,7 @@ void setup(){
     
   radio.enableDynamicPayloads();
   radio.powerUp();
- 
+
 }
 
 void loop(){
@@ -30,9 +30,13 @@ void loop(){
     Serial.println("Turning off the radio.");
     radio.stopListening();
 
-    String stringMessage(receivedMessage);
-
-    if (stringMessage == "GETSTRING"){
+    String convertedMessage(receivedMessage);
+    for(int i=0;i<=(sizeof(receivedMessage)-3);i++){
+      convertedMessage[i]=receivedMessage[i+3];
+    }
+    Serial.println(convertedMessage);
+    String stringMessage(convertedMessage);
+    if (stringMessage == "STRING"){
       Serial.println("Lools like they want a string");
       const char text[] = "Hello World!";
       radio.write(text,sizeof(text));
