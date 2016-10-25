@@ -38,50 +38,52 @@ void loop(){
   radio.startListening();
   Serial.println("Starting Loop. Radio on.");
   char receivedMessage[32]={0};
-  char address[4]={0};
-  char command[16]={0};
-  char mdata[8]={0};
+  char address[5]={0};
+  char command[17]={0};
+  char mdata[9]={0};
   if(radio.available()){
     radio.read(receivedMessage, sizeof(receivedMessage));
     Serial.println(receivedMessage);
     Serial.println("Turning off the radio.");
     radio.stopListening();
     
-    for(int i=0;i<=ADDR;i++){
+    for(int i=0;i<ADDR;i++){
       address[i]=receivedMessage[i];
     }
-    for(int i=ADDR;i<=CMD;i++){
+    for(int i=ADDR;i<CMD;i++){
       command[i-4]=receivedMessage[i];
     }
-    for (int i = CMD; i <= DATA; i++)
+    for (int i = CMD; i < DATA; i++)
     {
       mdata[i-20]=receivedMessage[i];
     }
     
-    if(address=="1000"){
-    	println("you are in the right node");
+    if(address[0]=='1'&&address[1]=='0'&&address[2]=='0'&&address[3]=='0'){
+    	Serial.println("you are in the right node");
     }
-    else if(adress=="0000"){
-    	println("message is sending to raspverri pi");
+    else if(address[0]=='0'&&address[1]=='0'&&address[2]=='0'&&address[3]=='0'){
+    	Serial.println("message is sending to raspverri pi");
     	radio.openWritingPipe(parent);
     	radio.write(receivedMessage,sizeof(receivedMessage));
     }
     else{
     	for(int i=0;i<=3;i++){
-    		println(address[i]);
+    		Serial.println(address[i]);
     	}
     	switch (address[1]){
     		case 'A':
+        Serial.println("childA data sending..");
     		radio.stopListening();
     		radio.openWritingPipe(childA);
     		radio.write(receivedMessage,sizeof(receivedMessage));
+        Serial.println("childA data has sent..");
     		break;
     		case 'B':
     		radio.openWritingPipe(childB);
     		radio.write(receivedMessage,sizeof(receivedMessage));
     		break;
     		default:
-    		println("adres bulunamadı");
+    		Serial.println("adres bulunamadı");
     		break;
     	}
     }
