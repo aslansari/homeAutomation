@@ -25,7 +25,7 @@ radio.openReadingPipe(1,pipes[1])
 radio.printDetails()
 #radio.startListening() #pi is in master role so it doesnt need to listen at start
 
-message = list("GETSTRING")
+message = list("1A00GETSTRING")
 while len(message) < 32:
     message.append(0)
     

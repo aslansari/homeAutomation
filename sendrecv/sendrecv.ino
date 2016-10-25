@@ -4,6 +4,10 @@
 //ce , csn pins
 RF24 radio(9,10);
 
+#define ADDR 4
+#define CMD 20
+#define DATA 28
+
 void setup(){
   while(!Serial);
   Serial.begin(9600);
@@ -24,18 +28,33 @@ void loop(){
   radio.startListening();
   Serial.println("Starting Loop. Radio on.");
   char receivedMessage[32]={0};
+  char address[4]={0};
+  char command[16]={0};
+  char mdata[8]={0};
   if(radio.available()){
     radio.read(receivedMessage, sizeof(receivedMessage));
     Serial.println(receivedMessage);
     Serial.println("Turning off the radio.");
     radio.stopListening();
-
+    /*
     String convertedMessage(receivedMessage);
     for(int i=0;i<=(sizeof(receivedMessage)-3);i++){
       convertedMessage[i]=receivedMessage[i+3];
     }
     Serial.println(convertedMessage);
     String stringMessage(convertedMessage);
+    */
+
+    for(int i=0;i<=ADDR;i++){
+    	address[i]=receivedMessage[i];
+    }
+    for(int i=ADDR;i<=CMD;i++){
+    	command[i-4]=receivedMessage[i];
+    }
+    for (int i = CMD; i <= DATA; i++)
+    {
+    	mdata[i-20]=receivedMessage[i];
+    }
     if (stringMessage == "STRING"){
       Serial.println("Lools like they want a string");
       const char text[] = "Hello World!";
