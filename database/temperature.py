@@ -2,7 +2,19 @@
 
 import MySQLdb
 
-db = MySQLdb.connect("sql7.freesqldatabase.com","sql7142358","64Uw2DMVcT","sql7142358")
+ldb = MySQLdb.connect("localhost","monitor","password","pass")
+lcurs = ldb.cursor()
+
+lcurs.execute("SELECT * FROM pws")
+
+for reading in lcurs.fetchall():
+	host=str(reading[1])
+	user=str(reading[2])
+	pw=str(reading[3])
+
+ldb.rollback()
+
+db = MySQLdb.connect(host,user,pw,user)
 cur=db.cursor()
 
 try:
