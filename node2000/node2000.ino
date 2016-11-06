@@ -54,13 +54,16 @@ void loop(){
     radio.stopListening();
     
     for(int i=0;i<ADDR;i++){
+      if(receivedMessage[i]!='`')//yazılı karakter dışındaki karakterler diziye atanır
       address[i]=receivedMessage[i];
     }
     for(int i=ADDR;i<CMD;i++){
+      if(receivedMessage[i]!='`')//yazılı karakter dışındaki karakterler command dizisine atanır
       command[i-4]=receivedMessage[i];
     }
     for (int i = CMD; i < DATA; i++)
     {
+      if(receivedMessage[i]!='`')//yazılı karakter dışındaki karakterler diziye atanır
       mdata[i-20]=receivedMessage[i];
     }
     //
@@ -95,6 +98,7 @@ void loop(){
     }
     
     String commands = String(command);
+    Serial.println(commands);
     if (commands == "GETTEMP"){
       Serial.println("Host asked for a temperature ");
       //Serial.println(temp);
