@@ -18,6 +18,10 @@ RF24 radio(9,10);
  *     for ex. first digit says it is the first module in the first layer
  *     if its '1B00' that module would be the second child module of 1000 
 */
+
+float temp,temps;
+boolean writeFlag;
+
 void setup(){
   while(!Serial);
   Serial.begin(9600);
@@ -32,13 +36,14 @@ void setup(){
   radio.enableDynamicPayloads();
   radio.powerUp();
 
-  int temp;
+  
 }
 
 void loop(){
   radio.startListening();
   Serial.println("Starting Loop. Radio on.");
   char receivedMessage[32]={0};
+  char transmitMessage[32]={0};
   char address[5]={0};
   char command[17]={0};
   char mdata[9]={0};
@@ -58,7 +63,7 @@ void loop(){
     {
       mdata[i-20]=receivedMessage[i];
     }
-    
+    //
     if(address[0]=='2'&&address[1]=='0'&&address[2]=='0'&&address[3]=='0'){
     	Serial.println("you are in the right node");
     }
@@ -84,29 +89,39 @@ void loop(){
     		radio.write(receivedMessage,sizeof(receivedMessage));
     		break;
     		default:
-    		Serial.println("adres bulunamadı");
+    		Serial.println("address not found");
     		break;
     	}
     }
-
     
-    if (command == "GETTEMP"){
+    String commands = String(command);
+    if (commands == "GETTEMP"){
       Serial.println("Host asked for a temperature ");
-      temp = getTemp();
+      //Serial.println(temp);
       //converting temperature value to string
-      String text = String(temp, DEC);
-      radio.write(text,sizeof(text));
-      Serial.println("We sent our message");
+      String message = String(temp,DEC);
+      message.toCharArray(transmitMessage,sizeof(message));
+      //Serial.println(transmitMessage);
+      radio.openWritingPipe(parent);
+      writeFlag = radio.write(transmitMessage,sizeof(transmitMessage));
+      if(writeFlag){// Acknowledge flag for transmitting data
+      	Serial.println("Data sent succesfully.");
+      	writeFlag = 0;
+      }
     }
-    
   }
+  //temp data messured in every loop
+  temp = getTemp();
 }
 
-getTemp(void){
+float getTemp(void){
 	//converting analog input to temperature value
 	//used LM35 for temp sensor
-	temp = analogRead(A0);
-	temp = (temp/1023)*5000;
-	temp = temp/10;
-	return temp;
+  	//Serial.println("messuring temperature");
+	temps = analogRead(A2);
+  	//Serial.println(temps);
+	temps = (temps*5000)/1023;
+	temps = temps/10;
+ 	//Serial.println("Temperature ="+temps);
+	return temps;
 }
