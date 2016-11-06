@@ -25,7 +25,17 @@ radio.openReadingPipe(1,pipes[1])
 radio.printDetails()
 #radio.startListening() #pi is in master role so it doesnt need to listen at start
 
-message = list("1A00GETTEMP")
+message = list("````````````````````````````````")
+address = '2000'
+command = 'GETTEMP'
+data = ''
+for index in range(len(address)):
+	message[index]=address[index]
+for index in range(4,4+len(command)):
+	message[index]=command[index-4]
+for index in range(20,20+len(data)):
+	message[index]=data[index-20]
+
 while len(message) < 32:
     message.append(0)
     
@@ -37,7 +47,7 @@ while True:
     
     while not radio.available(0):
         time.sleep(1/100)
-        if time.time() - start > 2:
+        if time.time() - start > 5:
             print("Timed out.")
             break
 
