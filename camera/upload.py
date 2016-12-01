@@ -9,7 +9,7 @@ myftp.connect(host,port)
 
 try:
 	print("Logging in...")
-	myftp.login("deccoyi_rp","yabanmersini")
+	myftp.login("deccoyi_home","yabanmersini")
 	print("Logged in.")
 except:
 	print("login failed.")
