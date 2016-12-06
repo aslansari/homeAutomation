@@ -18,6 +18,18 @@ RF24 radio(9,10);
  *     for ex. first digit says it is the first module in the first layer
  *     if its '1B00' that module would be the second child module of 1000 
 */
+
+int i=0;
+int counter=0;
+float temp,temps;
+boolean writeFlag;
+char receivedMessage[32]={0};
+char transmitMessage[32]={};
+char address[5]={0};
+char receiveAddress[5]={};
+char command[17]={0};
+char mdata[9]={0};
+  
 void setup(){
   while(!Serial);
   Serial.begin(9600);
@@ -32,31 +44,53 @@ void setup(){
   radio.enableDynamicPayloads();
   radio.powerUp();
 
+
 }
 
 void loop(){
   radio.startListening();
   Serial.println("Starting Loop. Radio on.");
-  char receivedMessage[32]={0};
-  char address[5]={0};
-  char command[17]={0};
-  char mdata[9]={0};
+
   if(radio.available()){
     radio.read(receivedMessage, sizeof(receivedMessage));
     Serial.println(receivedMessage);
     Serial.println("Turning off the radio.");
     radio.stopListening();
-    
-    for(int i=0;i<ADDR;i++){
-      address[i]=receivedMessage[i];
+    i=0;
+    counter=i;//i degiskeni counter degiskenine atanır ve while içinde i artarken counter sabit kalir 
+    //ve dizinin ilk elemanindan atanmaya baslanir
+    while(receivedMessage[i]!='`'){
+      receiveAddress[i-counter]=receivedMessage[i];
+      i++;
     }
-    for(int i=ADDR;i<CMD;i++){
-      command[i-4]=receivedMessage[i];
+    String receivingAddress = String(receiveAddress);
+    Serial.println("receivedAddress"+receivingAddress);
+    Serial.println("current i="+i);
+    i++;
+    counter=i;
+    while(receivedMessage[i]!='`'){
+      address[i-counter]=receivedMessage[i];
+      i++;
     }
-    for (int i = CMD; i < DATA; i++)
-    {
-      mdata[i-20]=receivedMessage[i];
+    String adres = String(address);
+    Serial.println("Address"+adres);
+    Serial.println("current i="+i);
+    i++;
+    counter=i;
+    while(receivedMessage[i]!='`'){
+      command[i-counter]=receivedMessage[i];
+      i++;
     }
+    String komut = String(command);
+    Serial.println("Komut="+komut);
+    Serial.println("current i="+i);
+    i++;
+    counter=i;
+    while(receivedMessage[i]!='`'){
+      mdata[i-counter]=receivedMessage[i];
+      i++;
+    }
+    i=0;//mesaj parcalara ayrilarak farkli degiskenlerde saklaniyor
     
     if(address[0]=='1'&&address[1]=='0'&&address[2]=='0'&&address[3]=='0'){
     	Serial.println("you are in the right node");
@@ -88,15 +122,80 @@ void loop(){
     	}
     }
 
-    /*
-    if (stringMessage == "STRING"){
-      Serial.println("Lools like they want a string");
-      const char text[] = "Hello World!";
-      radio.write(text,sizeof(text));
-      Serial.println("We sent our message");
+    String commands = String(command);
+    Serial.println(commands);
+    if (commands == "GETTEMP"){
+      Serial.println("Host asked for a temperature ");
+      //converting temperature value to string
+      String message = String(temp,DEC);
+      message.toCharArray(mdata,sizeof(message));
+      writeFrame();//data ve ardeslerin gonderilecek mesaja yazilmasi
+      Serial.println(transmitMessage);
+      radio.openWritingPipe(parent);
+      writeFlag = radio.write(transmitMessage,sizeof(transmitMessage));
+      if(writeFlag){// Acknowledge flag for transmitting data
+        Serial.println("Data sent succesfully.");
+        writeFlag = 0;
+      }
     }
-    */
+    
   }
+  //temp data messured in every loop
+  temp = getTemp();
 }
 
+float getTemp(void){
+  //converting analog input to temperature value
+  //used LM35 for temp sensor
+    //Serial.println("messuring temperature");
+  temps = analogRead(A2);
+    //Serial.println(temps);
+  temps = (temps*5000)/1023;
+  temps = temps/10;
+  //Serial.println("Temperature ="+temps);
+  return temps;
+}
+
+void writeFrame(){
+  i=0;
+  String debug = String(address);
+  Serial.println(debug);
+  counter=i;
+  while(address[i-counter]!='\0'){
+    transmitMessage[i]=address[i-counter];
+    Serial.println(transmitMessage[i]);
+    i++;
+  }
+  transmitMessage[i]='`';
+  i++;
+  counter=i;
+  debug = String(receiveAddress);
+  Serial.println(debug);
+  while(receiveAddress[i-counter]!='\0'){
+    transmitMessage[i]=receiveAddress[i-counter];
+    Serial.println(transmitMessage[i]);
+    i++;
+  }
+  transmitMessage[i]='`';
+  i++;
+  counter=i;
+  debug = String(command);
+  Serial.println(debug);
+  while(command[i-counter]!='\0'){
+    Serial.println(command[i-counter]);
+    transmitMessage[i]=command[i-counter];
+    i++;
+  }
+  transmitMessage[i]='`';
+  i++;
+  counter=i;
+  while(mdata[i-counter]!='\0'){
+    transmitMessage[i]=mdata[i-counter];
+    i++;
+  }
+  for(int k=i;k<=32;k++){
+    transmitMessage[k]='`';
+  }
+  i=0;
+}
 
