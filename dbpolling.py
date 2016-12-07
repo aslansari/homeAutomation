@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BCM)
 from lib_nrf24 import NRF24
@@ -45,20 +46,25 @@ while len(message) < 32:
     message.append(0)
     
 while True:
+	dvaddress = '0000'
+	address = ""
+	command = ""
+	data = "default"
+
 	db = MySQLdb.connect("localhost","monitor","password","commands")
 	cur=db.cursor()
 
 	cur.execute("select * from module")
 	for reading in cur.fetchall():
-		print("fordebug")		
+				
 		if reading[1]==1:
-			print("debug1")
+			
 			address=reading[0]
 			cur.execute("select * from cmd")
 			print(address)
 			for cmd in cur.fetchall():
 				if cmd[1]==1:
-					print("debug2")
+					
 					command = cmd[0]
 					cur.execute("select * from data")
 					print(command)
@@ -68,7 +74,7 @@ while True:
 							data=dat[0]
 
 	sendmessage = dvaddress +'`'+ address +'`'+ command +'`'+ data +'`' #gonderilecek mesajin olusturulmasi
-	print(sendmessage)				
+	print(sendmessage)					
 	if sendmessage!="0000```default`":
 	    
 				
@@ -117,11 +123,47 @@ while True:
 	        	    		string +=chr(n)
 	    		print("Our received message decodes to: {}".format(string))
 			
-			splitFrame = receivedMessage.split('`') # gelen mesajı ` karakterine göre parçalıyoruz
-
+								
+			splitFrame = string.split("`") # gelen mesajı ` karakterine göre parçalıyoruz
+			
+			dvaddress = splitFrame[0]
 			address = splitFrame[1]
 			command = splitFrame[2]
 			data = splitFrame[3]
-				
-	   	sendmessage=message
+			
+			if(command=="GETTEMP"):
+				print("writing temp data on database")
+				tempdb = MySQLdb.connect('localhost','monitor','password','temps')
+				temp_cur = tempdb.cursor()
+				str_db = "insert into tempdat values(CURRENT_DATE(),NOW(),"
+				str_db = str_db + "\'" + dvaddress + "\'" +","
+				str_db = str_db + data + ")" #gelen datalar ile mesaj oluşturuldu
+				print(str_db)
+				try:
+					temp_cur.execute(str_db) #bilgiler database'e giriliyor
+					tempdb.commit()
+					print("data committed.")
+					
+					str_db = "update module SET flag=0 where node="
+					str_db = str_db + "\'" + dvaddress + "\'"					
+					print(str_db)
+	
+					try:
+						cur.execute(str_db)
+						db.commit()
+						print("flags are down.")
+					except:
+						db.rollback()
+						print("database rolled back")
+					cur.execute("update cmd SET flag=0 where command='GETTEMP'")
+					db.commit()
+					address = ""
+					command = ""
+					data = ""
+					print("all flags are zero")
+					print("address=",address," command=",command," data=",data)
+				except:
+					tempdb.rollback()
+					print("database rolledback. Couldn't commit")
+	   	sendmessage="0000```default`"
 	time.sleep(1)
