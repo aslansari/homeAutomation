@@ -21,6 +21,15 @@ RF24 radio(9,10);
 
 float temp,temps;
 boolean writeFlag;
+int i=0;
+int counter=0;
+
+char receivedMessage[32]={0};
+char transmitMessage[32]={0};
+char sender_address[5]={0};
+char address[5]={0};
+char command[17]={0};
+char mdata[9]={0};
 
 void setup(){
   while(!Serial);
@@ -42,35 +51,19 @@ void setup(){
 void loop(){
   radio.startListening();
   Serial.println("Starting Loop. Radio on.");
-  char receivedMessage[32]={0};
-  char transmitMessage[32]={0};
-  char address[5]={0};
-  char command[17]={0};
-  char mdata[9]={0};
+
   if(radio.available()){
     radio.read(receivedMessage, sizeof(receivedMessage));
     Serial.println(receivedMessage);
     Serial.println("Turning off the radio.");
     radio.stopListening();
     
-    for(int i=0;i<ADDR;i++){
-      if(receivedMessage[i]!='`')//yazılı karakter dışındaki karakterler diziye atanır
-      address[i]=receivedMessage[i];
-    }
-    for(int i=ADDR;i<CMD;i++){
-      if(receivedMessage[i]!='`')//yazılı karakter dışındaki karakterler command dizisine atanır
-      command[i-4]=receivedMessage[i];
-    }
-    for (int i = CMD; i < DATA; i++)
-    {
-      if(receivedMessage[i]!='`')//yazılı karakter dışındaki karakterler diziye atanır
-      mdata[i-20]=receivedMessage[i];
-    }
-    //
-    if(address[0]=='2'&&address[1]=='0'&&address[2]=='0'&&address[3]=='0'){
+    readFrame();	//read received Frame and assign in dedicated array
+    String str_address = String(address);
+    if(str_address=="2000"){
     	Serial.println("you are in the right node");
     }
-    else if(address[0]=='0'&&address[1]=='0'&&address[2]=='0'&&address[3]=='0'){
+    else if(str_address=="0000"){
     	Serial.println("message is sending to raspverri pi");
     	radio.openWritingPipe(parent);
     	radio.write(receivedMessage,sizeof(receivedMessage));
@@ -97,17 +90,19 @@ void loop(){
     	}
     }
     
-    String commands = String(command);
-    Serial.println(commands);
-    if (commands == "GETTEMP"){
+    String str_command = String(command);	//transformation for if statement
+    Serial.println(str_command);
+    if (str_command == "GETTEMP"){
       Serial.println("Host asked for a temperature ");
       //Serial.println(temp);
-      //converting temperature value to string
+      //converting temperature value to string and to char array
       String message = String(temp,DEC);
-      message.toCharArray(transmitMessage,sizeof(message));
-      //Serial.println(transmitMessage);
+      message.toCharArray(mdata,sizeof(message));
+      
+      writeFrame();//data ve ardeslerin gonderilecek mesaja yazilmasi
       radio.openWritingPipe(parent);
       writeFlag = radio.write(transmitMessage,sizeof(transmitMessage));
+      
       if(writeFlag){// Acknowledge flag for transmitting data
       	Serial.println("Data sent succesfully.");
       	writeFlag = 0;
@@ -129,3 +124,69 @@ float getTemp(void){
  	//Serial.println("Temperature ="+temps);
 	return temps;
 }
+
+void writeFrame(){
+  i=0;
+  counter=i;
+  while(address[i-counter]!='\0'){
+    transmitMessage[i]=address[i-counter];
+    Serial.println(transmitMessage[i]);
+    i++;
+  }
+  transmitMessage[i]='`';
+  i++;
+  counter=i;
+  while(sender_address[i-counter]!='\0'){
+    transmitMessage[i]=sender_address[i-counter];
+    Serial.println(transmitMessage[i]);
+    i++;
+  }
+  transmitMessage[i]='`';
+  i++;
+  counter=i;
+  while(command[i-counter]!='\0'){
+    Serial.println(command[i-counter]);
+    transmitMessage[i]=command[i-counter];
+    i++;
+  }
+  transmitMessage[i]='`';
+  i++;
+  counter=i;
+  while(mdata[i-counter]!='\0'){
+    transmitMessage[i]=mdata[i-counter];
+    i++;
+  }
+  for(int k=i;k<=32;k++){
+    transmitMessage[k]='`';
+  }
+  i=0;
+}
+
+void readFrame(){
+	i=0;
+	counter=i;
+	while(receivedMessage[i]!='`'){
+		sender_address[i-counter]=receivedMessage[i];
+		i++;
+	}
+	i++;// '`' karakteri geçiliyor
+	counter=i;	//counter eşitlenerek address dizisinin ilk elemanindan atanmasi saglaniyor
+	while(receivedMessage[i]!='`'){
+		address[i-counter]=receivedMessage[i];
+		i++;
+	}
+	i++;
+	counter=i;
+	while(receivedMessage[i]!='`'){
+		command[i-counter]=receivedMessage[i];
+		i++;
+	}
+	i++;
+	counter=i;
+	while(receivedMessage[i]!='`'){
+		mdata[i-counter]=receivedMessage[i];
+		i++;
+	}
+
+}
+

@@ -26,7 +26,7 @@ boolean writeFlag;
 char receivedMessage[32]={0};
 char transmitMessage[32]={};
 char address[5]={0};
-char receiveAddress[5]={};
+char sender_address[5]={};
 char command[17]={0};
 char mdata[9]={0};
   
@@ -56,42 +56,9 @@ void loop(){
     Serial.println(receivedMessage);
     Serial.println("Turning off the radio.");
     radio.stopListening();
-    i=0;
-    counter=i;//i degiskeni counter degiskenine atanır ve while içinde i artarken counter sabit kalir 
-    //ve dizinin ilk elemanindan atanmaya baslanir
-    while(receivedMessage[i]!='`'){
-      receiveAddress[i-counter]=receivedMessage[i];
-      i++;
-    }
-    String receivingAddress = String(receiveAddress);
-    Serial.println("receivedAddress"+receivingAddress);
-    Serial.println("current i="+i);
-    i++;
-    counter=i;
-    while(receivedMessage[i]!='`'){
-      address[i-counter]=receivedMessage[i];
-      i++;
-    }
-    String adres = String(address);
-    Serial.println("Address"+adres);
-    Serial.println("current i="+i);
-    i++;
-    counter=i;
-    while(receivedMessage[i]!='`'){
-      command[i-counter]=receivedMessage[i];
-      i++;
-    }
-    String komut = String(command);
-    Serial.println("Komut="+komut);
-    Serial.println("current i="+i);
-    i++;
-    counter=i;
-    while(receivedMessage[i]!='`'){
-      mdata[i-counter]=receivedMessage[i];
-      i++;
-    }
-    i=0;//mesaj parcalara ayrilarak farkli degiskenlerde saklaniyor
-    
+
+    readFrame();
+
     if(address[0]=='1'&&address[1]=='0'&&address[2]=='0'&&address[3]=='0'){
     	Serial.println("you are in the right node");
     }
@@ -169,10 +136,10 @@ void writeFrame(){
   transmitMessage[i]='`';
   i++;
   counter=i;
-  debug = String(receiveAddress);
+  debug = String(sender_address);
   Serial.println(debug);
-  while(receiveAddress[i-counter]!='\0'){
-    transmitMessage[i]=receiveAddress[i-counter];
+  while(sender_address[i-counter]!='\0'){
+    transmitMessage[i]=sender_address[i-counter];
     Serial.println(transmitMessage[i]);
     i++;
   }
@@ -197,5 +164,33 @@ void writeFrame(){
     transmitMessage[k]='`';
   }
   i=0;
+}
+
+void readFrame(){
+	i=0;
+	counter=i;
+	while(receivedMessage[i]!='`'){
+		sender_address[i-counter]=receivedMessage[i];
+		i++;
+	}
+	i++;// '`' karakteri geçiliyor
+	counter=i;	//counter eşitlenerek address dizisinin ilk elemanindan atanmasi saglaniyor
+	while(receivedMessage[i]!='`'){
+		address[i-counter]=receivedMessage[i];
+		i++;
+	}
+	i++;
+	counter=i;
+	while(receivedMessage[i]!='`'){
+		command[i-counter]=receivedMessage[i];
+		i++;
+	}
+	i++;
+	counter=i;
+	while(receivedMessage[i]!='`'){
+		mdata[i-counter]=receivedMessage[i];
+		i++;
+	}
+
 }
 
