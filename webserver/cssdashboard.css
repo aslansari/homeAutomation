@@ -1,0 +1,243 @@
+﻿/* CSS Document */
+*{
+	margin: 0;
+	padding: 0;
+	border: 0;
+	font: inherit;
+	vertical-align: baseline;
+	font-family:'Yu Gothic Light',"Times New Roman", Times, serif;
+}
+a{text-decoration:none;}
+body{
+	
+	background-color: #dbdbdb;
+	
+}
+
+.nav{
+	background:#666;
+	height:40px;
+	width:auto;
+	}
+	
+.menu{
+	width:1250px;
+	height:40px;
+	margin: auto;
+	
+	}
+
+.menu .left{
+	width:auto;
+	height:30px;
+	color:#fff;
+	font-size:14px;
+	float:left;
+	font-family:'Yu Gothic Light', "Times New Roman", Times, serif;
+			
+}
+
+.menu .right{
+	width:auto;
+	height:30px;
+	color:#fff;
+	font-size:14px;
+	float:right;
+	font-family:'Yu Gothic Light', "Times New Roman", Times, serif;
+			
+}
+
+.menu .menubutonu:hover{
+	background-color:#2b2b2b;
+	border-bottom:orange solid 2px;
+	
+}
+	
+.menu .menubutonu{
+	width:auto;
+	height:auto;
+	padding: 9px 15px;
+	position:relative;
+	border-right:1px #000 solid;
+	font-family:'Yu Gothic Light', "Times New Roman", Times, serif;
+
+}
+
+.menu .loginbutonu{
+	width:auto;
+	height:auto;
+	padding: 8.5px 15px;
+	position:relative;
+	border-left:1px #000 solid;
+	font-family:'Yu Gothic Light', "Times New Roman", Times, serif;
+
+}
+.menu .loginbutonu:hover{
+	background-color:#2b2b2b;
+	border-bottom:orange solid 2px;
+}
+/* Dropdown Button */
+.dropbtn {
+    background-color: #666;
+    color: white;
+    padding: 9px 15px;
+    font-size: 14px;
+    border: none;
+    cursor: pointer;
+	font-family:'Yu Gothic Light', "Times New Roman", Times, serif;
+}
+
+/* The container <div> - needed to position the dropdown content */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+/* Dropdown Content (Hidden by Default) */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f0f0f0;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+	z-index:1;
+}
+
+/* Links inside the dropdown */
+.dropdown-content a {
+    color: black;
+    padding: 8px 16px;
+    text-decoration: none;
+    display: block;
+	font-family:'Yu Gothic Light', "Times New Roman", Times, serif;
+}
+
+/* Change color of dropdown links on hover */
+.dropdown-content a:hover {background-color: #e0e0e0; font-weight: 500;}
+
+/* Show the dropdown menu on hover */
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+/* Change the background color of the dropdown button when the dropdown content is shown */
+.dropdown:hover .dropbtn {
+    background-color: #2b2b2b;
+	border-bottom:orange solid 2px;
+}
+
+.content{
+	position: relative;
+	margin: 70px auto 15px auto;
+	width: 1415px;
+	height: 500px;
+	
+}
+
+.footer {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 10px;
+  margin: 0px auto;
+  background-color: #666;
+  text-align: center;
+  width: auto;
+  font-size:14px;
+  font-family:'Yu Gothic Light', "Times New Roman", Times, serif;
+  color: white;
+}
+
+.left-bar{
+	
+	float: left;
+	width:215px;
+	height: auto;
+	padding: 0px 0px;
+	border-top: 1px solid black;	
+}
+
+.left-bar .left-bar-button .lb-div{
+	clear: left;
+	font-family:'Yu Gothic Light', "Times New Roman", Times, serif;
+	font-size: 20px;
+	color: black;
+	padding:7px 0px;
+	text-align: center;
+	width: auto;
+	border-bottom: 1px solid black;
+	background-color: #f0f0f0;
+
+}
+
+.left-bar .left-bar-button .lb-div:hover{
+    background-color: #e0e0e0;
+	border-bottom:orange solid 1px;
+}
+
+.ana-content{
+	float: left;
+	width: 1170px;
+	padding: 10px;
+	height: auto;
+	background-color: #f0f0f0;
+	margin-left: 10px;
+	text-align: center;
+	
+}
+#gallery{
+	width: 749px;
+	height: auto;	
+	overflow: hidden;
+	display: inline-block;
+
+}
+
+#gallery-nav{
+	
+	width: auto;
+	height: auto;
+	float:left;
+	padding: 0px;
+	margin: 0px;
+}
+#gallery-nav a{
+	
+	width: auto;
+	height: auto;
+	padding: 0px;
+	margin: 0px;
+}
+.mini-res{
+	width:	132px;
+	height:	75px;
+	margin: 5px;
+	border: 2px solid orange;
+}
+.full-res{
+	width:	728px;
+	height:	411px;
+	overflow: hidden;
+}
+
+#gallery-full{
+	
+	width: 		749px;
+    height: 	410px;
+    overflow: 	hidden;
+    float: 		left;
+}
+
+.ana-content p{
+	
+	font-weight: bold;
+	font-size: 20px;
+	
+}
+
+
+
+
+
+
