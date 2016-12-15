@@ -8,6 +8,7 @@ import MySQLdb
 import os
 import ftplib
 import functions
+import datetime
 
 pipes=[[0xE8, 0xE8, 0xF0, 0xF0,0xE1],[0xF0, 0xF0, 0xF0, 0xF0, 0xE1]]
 
@@ -44,6 +45,16 @@ photo_counter = 1
 sendmessage = message
 while len(message) < 32:
     message.append(0)
+
+now = datetime.datetime.now() #belirli aralıklarla çekilen fotoğraflar için tanımlamalar
+now_hour = now.hour
+then_hour = now.hour
+now_min = now.minute
+if now_min<55:
+	then_min = now_min + 5	#her 5 dakikada bir fotoğraf çekilecek
+else: 
+	then_min = now_min - 55
+	then_hour = now_hour + 1
     
 while True:
 	dvaddress = '0000'
@@ -167,3 +178,22 @@ while True:
 					print("database rolledback. Couldn't commit")
 	   	sendmessage="0000```default`"
 	time.sleep(1)
+
+	now = datetime.datetime.now()
+	now_min = now.minute
+	now_hour = now.hour
+	print("then hour= ", then_hour)
+	print("now hour= ", now_hour)
+	print("now minute= ", now_min)
+	print("then minute= ", then_min)	
+	
+	if ((now_min>=then_min) & (then_hour==now_hour)):
+		functions.sec_photo()
+		
+		if now_min<=55:
+			then_min = now_min + 5
+		else:
+			then_min = now_min - 55
+			then_hour = now.hour + 1
+
+

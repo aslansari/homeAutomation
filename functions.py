@@ -1,4 +1,5 @@
 import os
+import datetime
 
 def take_photo(photo_counter):
 	print("Taking a photo...")
@@ -15,3 +16,18 @@ def take_photo(photo_counter):
 	elif photo_counter==5:
 		os.system('sudo cp buffer.jpg /var/www/html/kamera/buffer5.jpg')
 	
+
+def sec_photo():
+	print "Taking a photo..."
+
+	os.system('fswebcam -r 1280x720 buffer2.jpg')
+
+	now = datetime.datetime.now()
+	
+	str_now = str(now.isoformat())
+	
+	str_system = "cp buffer2.jpg ~/camera/"
+	str_system = str_system + str_now 
+	str_system = str_system + ".jpg"
+	
+	os.system(str_system)
