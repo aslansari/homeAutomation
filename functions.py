@@ -1,5 +1,7 @@
 import os
 import datetime
+import MySQLdb
+
 
 def take_photo(photo_counter):
 	print("Taking a photo...")
@@ -31,3 +33,12 @@ def sec_photo():
 	str_system = str_system + ".jpg"
 	
 	os.system(str_system)
+
+	photo_db = MySQLdb.connect("localhost","monitor","password","temps")
+	curs = photo_db.cursor()
+	
+	str_db = "insert into photo (time) values"
+	str_db = str_db + "(" + "\'" + str_now + "\'" + ")"
+	
+	curs.execute(str_db)
+	photo_db.commit()
