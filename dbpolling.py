@@ -10,12 +10,13 @@ import os
 import ftplib
 import functions
 import datetime
+import mailnotification
 
 pipes=[[0xE8, 0xE8, 0xF0, 0xF0,0xE1],[0xF0, 0xF0, 0xF0, 0xF0, 0xE1]]
 
-radio = NRF24(GPIO, spidev.SpiDev())
+radio = NRF24(GPIO, spidev.SpiDev()) #Radio nesnesi tanımlandı
 radio.begin(0,25)
-
+#radio config
 radio.setPayloadSize(32)
 radio.setChannel(0x76)
 radio.setDataRate(NRF24.BR_1MBPS)
@@ -55,14 +56,46 @@ if now_min<55:
 	then_min = now_min + 5	#her 5 dakikada bir fotoğraf çekilecek
 else: 
 	then_min = now_min - 55
-	then_hour = now_hour + 1
+	if now_hour == 23:
+		then_hour = 0	
+	else:
+		then_hour = now_hour + 1
+
     
 while True:
 	dvaddress = '0000'
 	address = ""
 	command = ""
 	data = "default"
-
+#incoming messages from slaves
+	radio.startListening()
+	start = time.time()
+	messageFlag = 1
+	while not radio.available(0):
+		time.sleep(1/100)
+		if time.time - start >1:
+			print "No message received."
+			messageFlag = 0
+			break
+	if messageFlag == 1:
+		rcvMessage = []
+		radio.read(rcvMessage, readio.getDynamicPayloadSize())
+		print("Received:{}".format(rcvMessage))
+		rcvString = ""
+		for n in rcv Message:
+			if(n >= 32 and n<=126):
+				rcvString += chr(n)
+		
+		rcvSplitFrame = rcvString.split("`")
+		
+		dvaddress = rcvSplitFrame[0]
+		address = rcvSplitFrame[1]
+		command = rcvSplitFrame[2]
+		data = rcvSplitFrame[3]
+		
+		if(command="ALERT"):
+			mailnotification.sendMail()	
+##############################
 	db = MySQLdb.connect("localhost","monitor","password","commands")
 	cur=db.cursor()
 
@@ -70,14 +103,15 @@ while True:
 	for reading in cur.fetchall():
 				
 		if reading[1]==1:
-			
 			address=reading[0]
+			time.sleep(1/100) #sleep for 10ms
 			cur.execute("select * from cmd")
 			print(address)
 			for cmd in cur.fetchall():
 				if cmd[1]==1:
 					
 					command = cmd[0]
+					time.sleep(1/100) #sleep for 10ms
 					cur.execute("select * from data")
 					print(command)
 					for dat in cur.fetchall():#########################################
@@ -86,7 +120,19 @@ while True:
 							data=dat[1]
 
 	sendmessage = dvaddress +'`'+ address +'`'+ command +'`'+ data +'`' #gonderilecek mesajin olusturulmasi
-	print(sendmessage)					
+	print(sendmessage)
+
+#	if sendmessage != "0000```default`":
+#		db = MySQLdb.connect("localhost","monitor","password","commands")
+#		cur = db.cursor()
+#		str_db = "insert into cmdqueue (command,flag) values "
+#		str_db = str_db + "(\'" + sendmessage + "\'"
+#		str_db = str_db + ",1)"
+#		print str_db
+#		cur.execute(str_db)
+#		db.commit()
+#		functions.setFlagZero() #command flags set to zero after command is added to command queue	
+
 	if sendmessage!="0000```default`":
 	    
 				
@@ -212,10 +258,13 @@ while True:
 	if ((now_min>=then_min) & (then_hour==now_hour)):
 		functions.sec_photo()
 		
-		if now_min<=55:
+		if now_min<55:
 			then_min = now_min + 5
 		else:
 			then_min = now_min - 55
-			then_hour = now.hour + 1
+			if now_hour ==23:
+				then_hour = 0
+			else:
+				then_hour = now_hour + 1
 
 

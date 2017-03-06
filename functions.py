@@ -42,3 +42,18 @@ def sec_photo():
 	
 	curs.execute(str_db)
 	photo_db.commit()
+
+def setFlagZero():
+	db = MySQLdb.connect("localhost","monitor","password","commands")
+	cur = db.cursor()
+
+	try:
+		cur.execute("update module SET flag=0 where flag=1")
+		cur.execute("update cmd SET flag=0 where flag=1")
+		cur.execute("update data SET flag=0 where flag=1")
+		db.commit()
+		print "Flags resetted."
+	except:
+		db.rollback()
+		print "Flag reset failed!"
+
