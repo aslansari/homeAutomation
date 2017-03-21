@@ -9,6 +9,7 @@ RF24 radio(9,10);
 #define DATA 28
 
 #define parent 0xF0F0F0F0E1LL
+#define alertPipe 0xc0c0c0c0a1LL
 #define childA 0xF0F0A020E1LL
 #define childB 0xF0F0B020E1LL
 #define deviceaddr "2000"
@@ -23,6 +24,7 @@ float temp,temps;
 boolean writeFlag;
 int i=0;
 int counter=0;
+unsigned long time;
 
 char receivedMessage[32]={0};
 char transmitMessage[32]={0};
@@ -41,10 +43,9 @@ void setup(){
   radio.openWritingPipe(parent);
   const uint64_t pipe = 0xE8E8F0F0E1LL;
   radio.openReadingPipe(1,pipe);
-    
   radio.enableDynamicPayloads();
   radio.powerUp();
-
+  
   
 }
 
@@ -111,6 +112,28 @@ void loop(){
   }
   //temp data messured in every loop
   temp = getTemp();
+  Serial.println(temp);
+  
+  if(temp>30){//SEND ALERT NOTIFICATION
+    radio.stopListening();
+    String sender = "2000";
+    String rcver = "0000";
+    String message = String(temp,DEC);
+    String str_command = "ALERT";
+    sender.toCharArray(address,sizeof(sender));
+    rcver.toCharArray(sender_address,sizeof(sender));
+    str_command.toCharArray(command,sizeof(str_command));
+    message.toCharArray(mdata,sizeof(message));
+    writeFrame();
+    
+    radio.openWritingPipe(parent);
+    radio.write(transmitMessage,sizeof(transmitMessage));
+    Serial.println(transmitMessage);
+    radio.startListening();
+    time = micros();
+    
+  }
+  delay(500);
 }
 
 float getTemp(void){
@@ -118,11 +141,11 @@ float getTemp(void){
 	//used LM35 for temp sensor
   	//Serial.println("messuring temperature");
 	temps = analogRead(A2);
-  	//Serial.println(temps);
+  //Serial.println(temps);
 	temps = (temps*5000)/1023;
 	temps = temps/10;
- 	//Serial.println("Temperature ="+temps);
 	return temps;
+ 
 }
 
 void writeFrame(){
@@ -156,9 +179,7 @@ void writeFrame(){
     transmitMessage[i]=mdata[i-counter];
     i++;
   }
-  for(int k=i;k<=32;k++){
-    transmitMessage[k]='`';
-  }
+  transmitMessage[i]='`';
   i=0;
 }
 
