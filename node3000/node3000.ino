@@ -127,20 +127,6 @@ void loop(){
       }
     }
   }
-  //temp data messured in every loop
-  temp = getTemp();
-}
-
-float getTemp(void){
-  //converting analog input to temperature value
-  //used LM35 for temp sensor
-    //Serial.println("messuring temperature");
-  temps = analogRead(A2);
-    //Serial.println(temps);
-  temps = (temps*5000)/1023;
-  temps = temps/10;
-  //Serial.println("Temperature ="+temps);
-  return temps;
 }
 
 void writeFrame(){
@@ -183,6 +169,9 @@ void writeFrame(){
 void readFrame(){
   for(int t=0;t<sizeof(mdata);t++){
     mdata[t]='\0';
+  }
+  for(int t=0;t<sizeof(command);t++){
+    command[t]='\0';
   }
   i=0;
   counter=i;
