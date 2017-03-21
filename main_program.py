@@ -69,48 +69,53 @@ def getTemp():
     radio.write(sendmessage)
     print("Sent the message: {}".format(sendmessage))
     radio.startListening() #pi starts to listen after sending the "message"
+    toFlag=0
     while not radio.available(0):
         time.sleep(1/100)
     	if time.time() - start > 2:
             print("Timed out.")
+	    toFlag = 1
             break
-    receivedMessage = []
-    del receivedMessage[:]
-    radio.read(receivedMessage, radio.getDynamicPayloadSize())
-    print("Received:{}".format(receivedMessage))
-    print("Translating our received message into unicode characters..")
-    string=""
-    for n in receivedMessage:
-        if(n >= 32 and n <= 126):
-            string +=chr(n)
-    print("Our received message decodes to: {}".format(string))
-    if string != "":			
-        splitFrame = string.split("`") # gelen mesajı ` karakterine göre parçalıyoruz
-			
-	dvaddress = splitFrame[0]
-	ddress = splitFrame[1]
-	command = splitFrame[2]
-	data = splitFrame[3]
+
+    if not toFlag == 1:
+
+    	receivedMessage = []
+    	del receivedMessage[:]
+    	radio.read(receivedMessage, radio.getDynamicPayloadSize())
+    	print("Received:{}".format(receivedMessage))
+    	print("Translating our received message into unicode characters..")
+    	string=""
+    	for n in receivedMessage:
+    	    if(n >= 32 and n <= 126):
+        	    string +=chr(n)
+    	print("Our received message decodes to: {}".format(string))
+    	if string != "":			
+    		splitFrame = string.split("`") # gelen mesajı ` karakterine göre parçalıyoruz
 				
-	if(command=="GETTEMP"):
-		print("writing temp data on database")
-		tempdb = MySQLdb.connect('localhost','monitor','password','sensors')
-		temp_cur = tempdb.cursor()
-		str_db = "insert into tempdat values(CURRENT_DATE(),NOW(),"
-		str_db = str_db + "\'" + dvaddress + "\'" +","
-		str_db = str_db + data + ")" #gelen datalar ile mesaj oluşturuldu
-		print(str_db)
-		try:
-			temp_cur.execute(str_db) #bilgiler database'e giriliyor
-			tempdb.commit()
-			address = ""
-			command = ""
-			data = ""
-			print("all flags are zero")
-			print("address=",address," command=",command," data=",data)
-		except:
-			tempdb.rollback()
-			print("database rolledback. Couldn't commit")
+		dvaddress = splitFrame[0]
+		ddress = splitFrame[1]
+		command = splitFrame[2]
+		data = splitFrame[3]
+				
+		if(command=="GETTEMP"):
+			print("writing temp data on database")
+			tempdb = MySQLdb.connect('localhost','monitor','password','sensors')
+			temp_cur = tempdb.cursor()
+			str_db = "insert into tempdat values(CURRENT_DATE(),NOW() + INTERVAL 1 HOUR,"
+			str_db = str_db + "\'" + dvaddress + "\'" +","
+			str_db = str_db + data + ")" #gelen datalar ile mesaj oluşturuldu
+			print(str_db)
+			try:
+				temp_cur.execute(str_db) #bilgiler database'e giriliyor
+				tempdb.commit()
+				address = ""
+				command = ""
+				data = ""
+				print("all flags are zero")
+				print("address=",address," command=",command," data=",data)
+			except:
+				tempdb.rollback()
+				print("database rolledback. Couldn't commit")
 	
 
     
@@ -126,7 +131,7 @@ while True:
 	messageFlag = 1
 	while not radio.available(0):
 		time.sleep(1/100)
-		if time.time() - start >1:
+		if time.time() - start >0.5:
 			print "No message received."
 			messageFlag = 0
 			break
@@ -224,93 +229,110 @@ while True:
 			radio.write(sendmessage)
 			print("Sent the message: {}".format(sendmessage))
 			radio.startListening() #pi starts to listen after sending the "message"
-    		
+    			
+			toFlag = 0
 			while not radio.available(0):
 				time.sleep(1/100)
-               			if time.time() - start > 2:
+               			if time.time() - start > 1:
                    			print("Timed out.")
+					toFlag = 1
 					break
 			
 			
-            		receivedMessage = []
-			del receivedMessage[:]
-    	    		radio.read(receivedMessage, radio.getDynamicPayloadSize())
-			print "dbrecvMessage"
-	    		print("Received:{}".format(receivedMessage))
-			print("Translating our received message into unicode characters..")
-	    		string=""
+			if not toFlag == 1:
+			
+            			receivedMessage = []
+				del receivedMessage[:]
+    	    			radio.read(receivedMessage, radio.getDynamicPayloadSize())
+				print "dbrecvMessage"
+	    			print("Received:{}".format(receivedMessage))
+				print("Translating our received message into unicode characters..")
+	    			string=""
 		
-	    		for n in receivedMessage:
-	        		if(n >= 32 and n <= 126):
-	        			string +=chr(n)
-	    		print("Our received message decodes to: {}".format(string))
+	    			for n in receivedMessage:
+	        			if(n >= 32 and n <= 126):
+	        				string +=chr(n)
+	    			print("Our received message decodes to: {}".format(string))
 			
 			
-			if string != "":	
-				splitFrame = string.split("`") # gelen mesajı ` karakterine göre parçalıyoruz
+				if string != "":	
+					splitFrame = string.split("`") # gelen mesajı ` karakterine göre parçalıyoruz
 			
-				dvaddress = splitFrame[0]
-				address = splitFrame[1]
-				command = splitFrame[2]
-				data = splitFrame[3]
+					dvaddress = splitFrame[0]
+					address = splitFrame[1]
+					command = splitFrame[2]
+					data = splitFrame[3]
 				
-				if(command=="GETTEMP"):
-					print("writing temp data on database")
-					tempdb = MySQLdb.connect('localhost','monitor','password','temps')
-					temp_cur = tempdb.cursor()
-					str_db = "insert into tempdat values(CURRENT_DATE(),NOW(),"
-					str_db = str_db + "\'" + dvaddress + "\'" +","
-					str_db = str_db + data + ")" #gelen datalar ile mesaj oluşturuldu
-					print(str_db)
-					try:
-						temp_cur.execute(str_db) #bilgiler database'e giriliyor
-						tempdb.commit()
-						print("data committed.")
-						
-						str_db = "update module SET flag=0 where node="
-						str_db = str_db + "\'" + dvaddress + "\'"					
+					if(command=="GETTEMP"):
+						print("writing temp data on database")
+						tempdb = MySQLdb.connect('localhost','monitor','password','temps')
+						temp_cur = tempdb.cursor()
+						str_db = "insert into tempdat values(CURRENT_DATE(),NOW(),"
+						str_db = str_db + "\'" + dvaddress + "\'" +","
+						str_db = str_db + data + ")" #gelen datalar ile mesaj oluşturuldu
 						print(str_db)
-		
 						try:
+							temp_cur.execute(str_db) #bilgiler database'e giriliyor
+							tempdb.commit()
+							print("data committed.")
+						
+							str_db = "update module SET flag=0 where node="
+							str_db = str_db + "\'" + dvaddress + "\'"					
+							print(str_db)
+		
+							try:
+								cur.execute(str_db)
+								db.commit()
+								print("flags are down.")
+							except:
+								db.rollback()
+								print("database rolled back")
+							cur.execute("update cmd SET flag=0 where command='GETTEMP'")
+							db.commit()
+							address = ""
+							command = ""
+							data = ""
+							print("all flags are zero")
+							print("address=",address," command=",command," data=",data)
+						except:
+							tempdb.rollback()
+							print("database rolledback. Couldn't commit")
+	
+					if command=="LIGHT":
+						if data =="ACK":
+							print "light turned on succesfully"
+							db = MySQLdb.connect('localhost','monitor','password','commands')
+							cur = db.cursor()
+							cur.execute("update cmd SET flag=0 where flag=1")
+							cur.execute("update data SET flag=0 where flag=1")
+							cur.execute("update data SET data='default' where id=1")
+	
+							str_db = "update module SET flag=0 where node="
+							str_db = str_db + "\'" + dvaddress + "\'"
 							cur.execute(str_db)
 							db.commit()
-							print("flags are down.")
-						except:
-							db.rollback()
-							print("database rolled back")
-						cur.execute("update cmd SET flag=0 where command='GETTEMP'")
-						db.commit()
-						address = ""
-						command = ""
-						data = ""
-						print("all flags are zero")
-						print("address=",address," command=",command," data=",data)
-					except:
-						tempdb.rollback()
-						print("database rolledback. Couldn't commit")
+							data = ""
 	
-				if command=="LIGHT":
-					if data =="ACK":
-						print "light turned on succesfully"
-						db = MySQLdb.connect('localhost','monitor','password','commands')
-						cur = db.cursor()
-						cur.execute("update cmd SET flag=0 where flag=1")
-						cur.execute("update data SET flag=0 where flag=1")
-						cur.execute("update data SET data='default' where id=1")
-	
-						str_db = "update module SET flag=0 where node="
-						str_db = str_db + "\'" + dvaddress + "\'"
-						cur.execute(str_db)
-						db.commit()
-						data = ""
-	
-					if data == "NACK":
-						print "Attemp failed!"
-						data = ""
+						if data == "NACK":
+							print "Attemp failed!"
+							data = ""
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	   	sendmessage="0000```default`"
 		string=""
-	time.sleep(1)
+	time.sleep(1/10)
 	now = datetime.datetime.now()
 	now_min = now.minute
 	now_hour = now.hour
