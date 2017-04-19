@@ -19,8 +19,8 @@
 #include <avr/wdt.h>
 #define SS_PIN 8
 #define RST_PIN 7
-#define motor1 4
-#define motor2 5
+#define DOOR_PIN 4
+#define door_button 5
 
 const int buzzer_1 =  2;
 RF24 radio(9,10);
@@ -50,7 +50,7 @@ String message="";
 unsigned long time;
 unsigned long radiotime;
 boolean timeout = false;
-
+boolean visitorIs = false; //false by default
 void setup()
 { 
   wdt_enable(WDTO_2S);//wdt setup 2 sn
@@ -64,14 +64,14 @@ void setup()
   radio.enableDynamicPayloads();
   radio.powerUp();
 
-  pinMode(motor1,OUTPUT);
-  pinMode(motor2,OUTPUT);
-  
+  pinMode(DOOR_PIN,OUTPUT);
+  pinMode(door_button,INPUT);
   pinMode(buzzer_1, OUTPUT);
   Serial.begin(9600);
   SPI.begin(); 
   rfid.init();
-  
+
+  digitalWrite(DOOR_PIN,HIGH);
 }
 
 void loop()
@@ -80,7 +80,7 @@ void loop()
   if (rfid.isCard()) {
     digitalWrite(buzzer_1, HIGH);
     if (rfid.readCardSerial()) {
-      /* Kartık id'si son okutulan kart ile aynı mı?*/
+      // Kartık id'si son okutulan kart ile aynı mı?
       if (rfid.serNum[0] != serNum0
         || rfid.serNum[1] != serNum1
         || rfid.serNum[2] != serNum2
@@ -88,7 +88,7 @@ void loop()
         || rfid.serNum[4] != serNum4
         || (millis()> time + 5000)
         ) {
-        /* Eğer Yeni Bir Kart Okutulduysa... */
+        // Eğer Yeni Bir Kart Okutulduysa... 
         Serial.println(" ");
         Serial.println("Kart Bulundu");
         serNum0 = rfid.serNum[0];
@@ -98,7 +98,7 @@ void loop()
         serNum4 = rfid.serNum[4];
         Serial.print("Kimlik: ");
                 
-        IDread();     
+        visitorIs = IDread();     
         printID();
         
         
@@ -114,20 +114,54 @@ void loop()
         radio.openWritingPipe(parent);
         Serial.println(transmitMessage);
         radio.write(transmitMessage,sizeof(transmitMessage));
+
+        radio.startListening();
+  
+        radiotime = millis();
+        while(!radio.available()){
+          if( millis() > radiotime + 2000 ){
+            Serial.println("radio read timed out.");
+            timeout = 1;
+            break;
+          }
+        wdt_reset();
+        }
+  
+        if(!timeout){
+          radio.read(receivedMessage, sizeof(receivedMessage));
+          Serial.println(receivedMessage);
+          readFrame();
+          Serial.println(String(sender_address));
+          Serial.println(String(address));
+          Serial.println(String(command));
+          Serial.println(String(mdata));
+          Serial.println(visitorIs);
+        }
         
+        radio.stopListening();
+        //Door is opening
+        if( visitorIs==1 && String(mdata)=="OK"){
+          openDoor();
+        }
         radio.stopListening();     
         time = millis();
       }
       else{
         
-       /* Eğer aynı kart okutuluyorsa, id'yi tekrar basmak yerine
-       nokta basıyoruz.*/
+       // Eğer aynı kart okutuluyorsa, id'yi tekrar basmak yerine
+       //nokta basıyoruz.
         Serial.print(".");
       }
     }
     delay(200);
     digitalWrite(buzzer_1, LOW);
   }
+  if(digitalRead(door_button)){
+    digitalWrite(buzzer_1,HIGH);
+    openDoor();
+    digitalWrite(buzzer_1,LOW);
+  }
+
   wdt_reset();
   rfid.halt();
 
@@ -160,30 +194,41 @@ void printID(){
                 Serial.println(" ");
   
 }
+void openDoor(){
+  digitalWrite(DOOR_PIN,LOW);
+  delay(3000);
+  digitalWrite(DOOR_PIN,HIGH);
+}
 
-void IDread(){
+boolean IDread(){
   if(serNum0==21 && serNum1==118 && serNum2==55 && serNum3==65 && serNum4==21){
     Serial.println("Furkan Ermanas YABANCI");
     message = "#1395";
+    return true;
   }
   else if(serNum0==149 && serNum1==71 && serNum2==57 && serNum3==65 && serNum4==170){
     Serial.println("Aslan SARI");
     message = "#0617";
+    return true;
   }
   else if(serNum0==10 && serNum1==192 && serNum2==14 && serNum3==49 && serNum4==245){
     Serial.println("Dergah Coskun YILDIZ");
     message = "#1907";
+    return true;
   }
   else if(serNum0==212 && serNum1==156 && serNum2==222 && serNum3==164 && serNum4==50){
     Serial.println("Berk DEMIRKIRAN");
     message = "#3169";
+    return true;
   }
   else if(serNum0==32 && serNum1==144 && serNum2==122 && serNum3==122 && serNum4==176){
     Serial.println("ADMIN");
     message = "#0001";
+    return true;
   }
   else{
     Serial.println("Tanimsiz.");
+    return false;
   }
 }
 
@@ -228,9 +273,6 @@ void readFrame(){
   }
   for(int t=0;t<sizeof(command);t++){
     command[t]='\0';
-  }
-  for(int t=0;t<sizeof(receivedMessage);t++){
-    receivedMessage[t]='\0';
   }
   i=0;
   counter=i;
