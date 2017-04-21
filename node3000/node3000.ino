@@ -22,6 +22,7 @@ boolean writeFlag;
 int i=0;
 int counter=0;
 boolean lightState;
+unsigned long time;
 
 char receivedMessage[32]={0};
 char transmitMessage[32]={0};
@@ -126,10 +127,55 @@ void loop(){
         radio.write(transmitMessage,sizeof(transmitMessage));
       }
     }
+    else if(str_command=="GETTEMP"){
+      String message = String(temp,DEC);
+      message.toCharArray(mdata,sizeof(message));
+      writeFrame();
+
+      radio.stopListening();
+      radio.write(transmitMessage,sizeof(transmitMessage));
+    }
   }
+  temp = getTemp();
+  Serial.println(temp);
+  
+  if(temp>30){//SEND ALERT NOTIFICATION
+    radio.stopListening();
+    String sender = "2000";
+    String rcver = "0000";
+    String message = String(temp,DEC);
+    String str_command = "ALERT";
+    sender.toCharArray(address,sizeof(sender));
+    rcver.toCharArray(sender_address,sizeof(sender));
+    str_command.toCharArray(command,sizeof(str_command));
+    message.toCharArray(mdata,sizeof(message));
+    writeFrame();
+    
+    radio.openWritingPipe(parent);
+    radio.write(transmitMessage,sizeof(transmitMessage));
+    Serial.println(transmitMessage);
+    radio.startListening();
+    time = micros();
+//    
+  }
+  delay(300);
+}
+
+
+float getTemp(void){
+  //converting analog input to temperature value
+  //used LM35 for temp sensor
+    //Serial.println("messuring temperature");
+  temps = analogRead(A3);
+  //Serial.println(temps);
+  temps = (temps*5000)/1023;
+  temps = temps/10;
+  return temps;
+ 
 }
 
 void writeFrame(){
+  
   i=0;
   counter=i;
   while(address[i-counter]!='\0'){
