@@ -119,30 +119,29 @@ void loop()
   
         radiotime = millis();
         while(!radio.available()){
-          if( millis() > radiotime + 2000 ){
+          if( millis() > radiotime + 1000 ){
             Serial.println("radio read timed out.");
             timeout = 1;
             break;
           }
-        wdt_reset();
+        
         }
-  
+        wdt_reset();
         if(!timeout){
           radio.read(receivedMessage, sizeof(receivedMessage));
           Serial.println(receivedMessage);
           readFrame();
-          Serial.println(String(sender_address));
-          Serial.println(String(address));
-          Serial.println(String(command));
           Serial.println(String(mdata));
           Serial.println(visitorIs);
+          
         }
-        
+        wdt_reset();
         radio.stopListening();
         //Door is opening
         if( visitorIs==1 && String(mdata)=="OK"){
           openDoor();
         }
+        wdt_reset();
         radio.stopListening();     
         time = millis();
       }
@@ -161,10 +160,50 @@ void loop()
     openDoor();
     digitalWrite(buzzer_1,LOW);
   }
+  wdt_reset();
+  
+//  radio.startListening();
+//  radiotime = millis();
+//  while(!radio.available()){
+//    if( millis() > radiotime + 500 ){
+//      Serial.println("radio read timed out.");
+//      timeout = 1;
+//      break;
+//    }
+//  }
+//
+//  if(!timeout){
+//    radio.read(receivedMessage, sizeof(receivedMessage));
+//    Serial.println(receivedMessage);
+//    readFrame();
+//    Serial.println(String(mdata));
+//    Serial.println(visitorIs);
+//    radio.stopListening();
+//    if(String(mdata)=="OPEN"){
+//      message = "5000";
+//      message.toCharArray(sender_address,sizeof(message));
+//      message = "0000";
+//      message.toCharArray(address,sizeof(message));
+//      message = "DOOR";
+//      message.toCharArray(command,sizeof(message));
+//      message = "OPEN";
+//      message.toCharArray(mdata,sizeof(message));
+//      writeFrame();
+//      radio.write(transmitMessage,sizeof(transmitMessage)); 
+//    }
+//    
+//  }
+//  wdt_reset();
+//
+//  if(String(mdata)=="OPEN"){
+//    digitalWrite(buzzer_1,HIGH);
+//    openDoor();
+//    digitalWrite(buzzer_1,LOW);
+//  }
 
   wdt_reset();
   rfid.halt();
-
+  timeout=0;
 }
 
 void printID(){                
@@ -235,6 +274,9 @@ boolean IDread(){
 void writeFrame(){
   int i=0;
   int  counter=i;
+  for(int t=0;t<sizeof(receivedMessage);t++){
+    receivedMessage[t]='\0';
+  }
   for(int t=0;t<sizeof(transmitMessage);t++){
     transmitMessage[t]='\0';
   }
