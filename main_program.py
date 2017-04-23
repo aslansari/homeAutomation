@@ -46,51 +46,92 @@ photo_counter = 1
 
 sendmessage = message
 while len(message) < 32:
-    message.append(0)
+	message.append(0)
 
 now = datetime.datetime.now() #belirli aralıklarla çekilen fotoğraflar için tanımlamalar
 now_hour = now.hour
 then_hour = now.hour
 now_min = now.minute
-alert_time = now
+alert_time = datetime.datetime.now()	
+
 if now_min<55:
 	then_min = now_min + 5	#her 5 dakikada bir fotoğraf çekilecek
 else: 
 	then_min = now_min - 55
 	if now_hour == 23:
-		then_hour = 0	
+			then_hour = 0	
 	else:
 		then_hour = now_hour + 1
 
-def getTemp():
-    sendmessage = "0000`2000`GETTEMP``"
-    start = time.time()
-    radio.stopListening()
-    radio.write(sendmessage)
-    print("Sent the message: {}".format(sendmessage))
-    radio.startListening() #pi starts to listen after sending the "message"
-    toFlag=0
-    while not radio.available(0):
-        time.sleep(1/100)
-    	if time.time() - start > 2:
-            print("Timed out.")
-	    toFlag = 1
-            break
+def nodeAccess(accdvaddress,accaddress,acccommand,accdata):
+        sendmessage = accdvaddress + '`' + accaddress + '`' + acccommand + '`' + accdata + '`'
+        start = time.time()
+        radio.stopListening()
+        radio.write(sendmessage)
+        print sendmessage
+        print("Sent the message: {}".format(sendmessage))
+        radio.startListening()
+        toFlag = 0
 
-    if not toFlag == 1:
+        while not radio.available(0):
+		time.sleep(1/100)
+		if time.time() - start > 2:
+			print("Timed out.")
+			toFlag = 1
+			return 0
+        if not toFlag == 1:
+                receivedMessage = []
+                del receivedMessage[:]
+                radio.read(receivedMessage, radio.getDynamicPayloadSize())
+		print("Received:{}".format(receivedMessage))
+		print("Translating our received message into unicode characters..")
+		string=""
+		for n in receivedMessage:
+			if(n >= 32 and n <= 126):
+				string +=chr(n)
+		print("Our received message decodes to: {}".format(string))
+		if string != "":			
+			splitFrame = string.split("`") # gelen mesajı ` karakterine göre parçalıyoruz
+				
+		return splitFrame
+                
 
-    	receivedMessage = []
-    	del receivedMessage[:]
-    	radio.read(receivedMessage, radio.getDynamicPayloadSize())
-    	print("Received:{}".format(receivedMessage))
-    	print("Translating our received message into unicode characters..")
-    	string=""
-    	for n in receivedMessage:
-    	    if(n >= 32 and n <= 126):
-        	    string +=chr(n)
-    	print("Our received message decodes to: {}".format(string))
-    	if string != "":			
-    		splitFrame = string.split("`") # gelen mesajı ` karakterine göre parçalıyoruz
+	
+def getTemp(self):
+        if self == "":
+                targetNode = "3000"
+        else:
+                targetNode = self
+	msgtoSend = "0000`"
+	msgtoSend = msgtoSend + targetNode +"`GETTEMP``"
+	print msgtoSend
+	start = time.time()
+	radio.stopListening()
+	radio.write(msgtoSend)
+	print("Sent the message: {}".format(msgtoSend))
+	radio.startListening() #pi starts to listen after sending the "message"
+	toFlag=0
+	while not radio.available(0):
+		time.sleep(1/100)
+		if time.time() - start > 2:
+			print("Timed out.")
+			toFlag = 1
+			break
+
+	if not toFlag == 1:
+
+		receivedMessage = []
+		del receivedMessage[:]
+		radio.read(receivedMessage, radio.getDynamicPayloadSize())
+		print("Received:{}".format(receivedMessage))
+		print("Translating our received message into unicode characters..")
+		string=""
+		for n in receivedMessage:
+			if(n >= 32 and n <= 126):
+				string +=chr(n)
+		print("Our received message decodes to: {}".format(string))
+		if string != "":			
+			splitFrame = string.split("`") # gelen mesajı ` karakterine göre parçalıyoruz
 				
 		dvaddress = splitFrame[0]
 		ddress = splitFrame[1]
@@ -101,7 +142,7 @@ def getTemp():
 			print("writing temp data on database")
 			tempdb = MySQLdb.connect('localhost','monitor','password','sensors')
 			temp_cur = tempdb.cursor()
-			str_db = "insert into tempdat values(CURRENT_DATE(),NOW() + INTERVAL 1 HOUR,"
+			str_db = "insert into tempdat values(CURRENT_DATE(),NOW(),"
 			str_db = str_db + "\'" + dvaddress + "\'" +","
 			str_db = str_db + data + ")" #gelen datalar ile mesaj oluşturuldu
 			print(str_db)
@@ -117,8 +158,62 @@ def getTemp():
 				tempdb.rollback()
 				print("database rolledback. Couldn't commit")
 	
+def fetchCommand():
+    	db = MySQLdb.connect("localhost","monitor","password","commands")
+	cur=db.cursor()
 
-    
+        cur.execute("select * from cmdready")
+        for reading in cur.fetchall():
+                if reading[1]==1:
+                        print "Command is ready to send"
+                        
+                        cur.execute("select * from module")
+                        for reading in cur.fetchall():
+				if reading[1]==1:
+                                        address=reading[0]
+
+                                        cur.execute("select * from cmd")
+                                        print(address)
+                                        for cmd in cur.fetchall():
+                                                if cmd[1]==1:
+                                                        command = cmd[0]
+                                                        print(command)
+                                                        cur.execute("select * from data")
+                                                        for dat in cur.fetchall():#########################################
+                                                              	dataFlag=dat[2]#default olma durumu ile ilgili bir statement eklenecek
+                                                        	if(dataFlag==1):
+                                                                	data=dat[1]
+									print data
+									break
+                                                                else:
+									data="default"
+
+                        sendmessage = dvaddress +'`'+ address +'`'+ command +'`'+ data +'`' #gonderilecek mesajin olusturulmasi
+                        print(sendmessage)
+                        return sendmessage
+                else:
+                        return ""
+
+def alertProcess():
+        print "send e-mail"
+#        mailnotification.sendMail() #sends mail about the alert situation
+        for x in range(3):
+                success = nodeAccess("0000","3000","LIGHT","ON")
+                if success!=0:
+                        break
+        for x in range(3):
+                success = nodeAccess("0000","5000","DOOR","OPEN")
+                if success!=0:
+                        break
+        for x in range(3):
+                success = nodeAccess("0000","4000","PLUG","OFF")
+                if success!=0:
+                        break
+##        if x in range(3):
+##                success = nodeAccess("7000","CONN","CLOSE")
+##                if success!=0:
+##                        break
+
 while True:
 	dvaddress = '0000'
 	address = ""
@@ -146,6 +241,7 @@ while True:
 			if(n >= 32 and n<=126):
 				rcvString += chr(n)
 		
+		print("format into{}:".format(rcvString))
 		rcvSplitFrame = rcvString.split("`")
 		
 		dvaddress = rcvSplitFrame[0]
@@ -155,53 +251,48 @@ while True:
 		msg_time = datetime.datetime.now()
 		
 		if(command == "ALERT"):
-                        if((msg_time.year>alert_time.year) | (msg_time.month>alert_time.month) | (msg_time.day>=alert_time.day)):
-                                if((msg_time.hour==alert_time.hour) & (msg_time.minute>alert_time.minute+5)):
-                                        alert_time = msg_time
-                                        mailnotification.sendMail()
-				elif(msg_time.hour>alert_time.hour):
-					alert_time = msg_time
-					mailnotification.sendMail()	
+                        alertProcess()
+##			if((msg_time.year>alert_time.year) | (msg_time.month>alert_time.month) | (msg_time.day>=alert_time.day)):
+##                                if((msg_time.hour==alert_time.hour) & (msg_time.minute>alert_time.minute+3 )):
+##                                        alert_time = msg_time
+##                                	alertProcess()
+##			
+##                        elif(msg_time.hour>alert_time.hour):
+##                                alert_time = msg_time
+##                                alertProcess()
+		
+
+		if(command == "ID"):
+                        logFlag = functions.logSignIn(data)#yollanan mesajin 
+                        print "logFlag:",logFlag
+                        if logFlag == 1:
+                                radio.stopListening()
+                                time.sleep(1/4)
+                                radio.write("0000`5000`ID`OK`")
+                                print "ID confirmed."
+                                
+                        elif logFlag == 0: 
+                                radio.stopListening()
+                                time.sleep(1/4)
+                                radio.write("0000`5000`ID`NOT`")
+                                print "ID denied!"
+
+                if(command == "WINDOW"):
+                        functions.windowState(data,address)
+                        radio.stopListening()
+                        str_message = "0000`"
+                        str_message = str_message + address + "`WINDOW`ACK`"
+                        radio.write(str_message)
+                        
 ##############################
-	db = MySQLdb.connect("localhost","monitor","password","commands")
-	cur=db.cursor()
+	sendmessage = fetchCommand()
 
-	cur.execute("select * from module")
-	for reading in cur.fetchall():
-				
-		if reading[1]==1:
-			address=reading[0]
-			time.sleep(1/100) #sleep for 10ms
-			cur.execute("select * from cmd")
-			print(address)
-			for cmd in cur.fetchall():
-				if cmd[1]==1:
-					
-					command = cmd[0]
-					time.sleep(1/100) #sleep for 10ms
-					cur.execute("select * from data")
-					print(command)
-					for dat in cur.fetchall():#########################################
-						dataFlag=dat[2]#default olma durumu ile ilgili bir statement eklenecek
-						if dataFlag==1:
-							data=dat[1]
-
-	sendmessage = dvaddress +'`'+ address +'`'+ command +'`'+ data +'`' #gonderilecek mesajin olusturulmasi
-	print(sendmessage)
-
-#	if sendmessage != "0000```default`":
-#		db = MySQLdb.connect("localhost","monitor","password","commands")
-#		cur = db.cursor()
-#		str_db = "insert into cmdqueue (command,flag) values "
-#		str_db = str_db + "(\'" + sendmessage + "\'"
-#		str_db = str_db + ",1)"
-#		print str_db
-#		cur.execute(str_db)
-#		db.commit()
-#		functions.setFlagZero() #command flags set to zero after command is added to command queue	
-
-	if sendmessage!="0000```default`":
-	    
+	if not sendmessage == "":
+                splitFrame = sendmessage.split("`")
+                dvaddress = splitFrame[0]
+		address = splitFrame[1]
+		command = splitFrame[2]
+		data = splitFrame[3]
 				
 		if(address=="0000"):	#address of raspberry pi
 			if(command=="CAPTURE"):#requested duty
@@ -210,16 +301,8 @@ while True:
 				print("photo counter = ",photo_counter)
 				if photo_counter>=6:
 					photo_counter = 1
-				try:
-					cur.execute("update module SET flag=0 where node='0000'")
-					cur.execute("update cmd SET flag=0 where command='CAPTURE'")
-					db.commit()
-					address=""
-					command=""
-					print("flags resetted")
-				except:
-					db.rollback()
-					print("failed to commit")
+
+				functions.setFlagZero()
 
 				
 			
@@ -229,30 +312,30 @@ while True:
 			radio.write(sendmessage)
 			print("Sent the message: {}".format(sendmessage))
 			radio.startListening() #pi starts to listen after sending the "message"
-    			
+				
 			toFlag = 0
 			while not radio.available(0):
 				time.sleep(1/100)
-               			if time.time() - start > 1:
-                   			print("Timed out.")
+				if time.time() - start > 1:
+					print("Timed out.")
 					toFlag = 1
 					break
 			
 			
 			if not toFlag == 1:
 			
-            			receivedMessage = []
+				receivedMessage = []
 				del receivedMessage[:]
-    	    			radio.read(receivedMessage, radio.getDynamicPayloadSize())
+				radio.read(receivedMessage, radio.getDynamicPayloadSize())
 				print "dbrecvMessage"
-	    			print("Received:{}".format(receivedMessage))
+				print("Received:{}".format(receivedMessage))
 				print("Translating our received message into unicode characters..")
-	    			string=""
+				string=""
 		
-	    			for n in receivedMessage:
-	        			if(n >= 32 and n <= 126):
-	        				string +=chr(n)
-	    			print("Our received message decodes to: {}".format(string))
+				for n in receivedMessage:
+					if(n >= 32 and n <= 126):
+						string +=chr(n)
+				print("Our received message decodes to: {}".format(string))
 			
 			
 				if string != "":	
@@ -263,74 +346,38 @@ while True:
 					command = splitFrame[2]
 					data = splitFrame[3]
 				
-					if(command=="GETTEMP"):
-						print("writing temp data on database")
-						tempdb = MySQLdb.connect('localhost','monitor','password','temps')
-						temp_cur = tempdb.cursor()
-						str_db = "insert into tempdat values(CURRENT_DATE(),NOW(),"
-						str_db = str_db + "\'" + dvaddress + "\'" +","
-						str_db = str_db + data + ")" #gelen datalar ile mesaj oluşturuldu
-						print(str_db)
-						try:
-							temp_cur.execute(str_db) #bilgiler database'e giriliyor
-							tempdb.commit()
-							print("data committed.")
-						
-							str_db = "update module SET flag=0 where node="
-							str_db = str_db + "\'" + dvaddress + "\'"					
-							print(str_db)
-		
-							try:
-								cur.execute(str_db)
-								db.commit()
-								print("flags are down.")
-							except:
-								db.rollback()
-								print("database rolled back")
-							cur.execute("update cmd SET flag=0 where command='GETTEMP'")
-							db.commit()
-							address = ""
-							command = ""
-							data = ""
-							print("all flags are zero")
-							print("address=",address," command=",command," data=",data)
-						except:
-							tempdb.rollback()
-							print("database rolledback. Couldn't commit")
 	
 					if command=="LIGHT":
 						if data =="ACK":
 							print "light turned on succesfully"
-							db = MySQLdb.connect('localhost','monitor','password','commands')
-							cur = db.cursor()
-							cur.execute("update cmd SET flag=0 where flag=1")
-							cur.execute("update data SET flag=0 where flag=1")
-							cur.execute("update data SET data='default' where id=1")
-	
-							str_db = "update module SET flag=0 where node="
-							str_db = str_db + "\'" + dvaddress + "\'"
-							cur.execute(str_db)
-							db.commit()
+							functions.setFlagZero()
 							data = ""
 	
 						if data == "NACK":
-							print "Attemp failed!"
+							print "Attempt failed!"
 							data = ""
 
+					if command=="PLUG":
+                                                if data == "ACK":
+                                                        print "plug diactivated succesfully"
+                                                        functions.setFlagZero()
+                                                        data = ""
+                                                if data == "NACK":
+                                                        print "Attempt failed!"
+                                                        data == ""
+                                                        
+                                        if command == "VALVE":
+                                                if data == "ACK":
+                                                        print "operation succesful"
+                                                        functions.setFlagZero()
+                                                        data = ""
+                                                if data == "NACK":
+                                                        print "Attempt failed!"
+                                                        data = ""
 
 
 
-
-
-
-
-
-
-
-
-
-
-	   	sendmessage="0000```default`"
+		sendmessage="0000```default`"
 		string=""
 	time.sleep(1/10)
 	now = datetime.datetime.now()
@@ -342,8 +389,8 @@ while True:
 	print("then minute= ", then_min)	
 	
 	if ((now_min>=then_min) & (then_hour==now_hour)):
-		functions.sec_photo()
-		getTemp()		
+##		functions.sec_photo()
+		getTemp("")		
 		if now_min<55:
 			then_min = now_min + 5
 		else:
