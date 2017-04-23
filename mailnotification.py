@@ -7,14 +7,14 @@ from email.mime.image import MIMEImage
 
 def sendMail():
 	try:
-	       fp = open("textfile.txt", 'rb')
+	       fp = open("alertMail.txt", 'rb')
 	       body = MIMEText(fp.read())
 	finally:
 	        fp.close()
 	
 	msg = MIMEMultipart()
 	fromaddr = 'sydyotomasyon@gmail.com'
-	toaddrs  = 'dcyldz@gmail.com'
+	toaddrs  = 'aslan.sari022@gmail.com'
 	msg['Subject'] = "Dikkat!!!"
 	msg['From'] = fromaddr
 	msg['To'] = toaddrs
