@@ -4,24 +4,20 @@
 //ce , csn pins
 RF24 radio(9,10);
 
-#define lightSwitch 3
-
 #define parent 0xF0F0F0F0E1LL
 #define childA 0xF0F0A030E1LL
 #define childB 0xF0F0B030E1LL
-#define deviceaddr "3000"
+#define deviceaddr "4000"
 /*    This module is one of the child of raspberryPi.
  *     1000 represents that the module is in the first layer of nodes
  *     each digit shows where module works on network
  *     for ex. first digit says it is the first module in the first layer
  *     if its '1B00' that module would be the second child module of 1000 
 */
-
-float temp,temps;
+const int PLUG=3;
 boolean writeFlag;
 int i=0;
 int counter=0;
-boolean lightState;
 unsigned long time;
 
 char receivedMessage[32]={0};
@@ -45,7 +41,8 @@ void setup(){
   radio.enableDynamicPayloads();
   radio.powerUp();
 
-  pinMode(lightSwitch,OUTPUT);
+  pinMode(PLUG,OUTPUT);
+
 }
 
 void loop(){
@@ -60,7 +57,7 @@ void loop(){
     
     readFrame();  //read received Frame and assign in dedicated array
     String str_address = String(address);
-    if(str_address=="3000"){
+    if(str_address=="4000"){
       Serial.println("you are in the right node");
     }
     else if(str_address=="0000"){
@@ -95,11 +92,11 @@ void loop(){
     String str_command = String(command); //transformation for if statement
     Serial.println(str_command);
     
-    if (str_command == "LIGHT"){
+    if (str_command == "PLUG"){
       Serial.println("str_data="+str_data);
       if(str_data == "ON"){
         Serial.println("turning lights on...");
-        digitalWrite(lightSwitch,LOW);
+        digitalWrite(PLUG,LOW);
         String message = "ACK";
         message.toCharArray(mdata,sizeof(message));
         writeFrame();
@@ -109,7 +106,7 @@ void loop(){
       }
       else if(str_data == "OFF"){
         Serial.println("Turning lights off...");
-        digitalWrite(lightSwitch,HIGH);
+        digitalWrite(PLUG,HIGH);
         String message = "ACK";
         message.toCharArray(mdata,sizeof(message));
         writeFrame();
@@ -127,51 +124,7 @@ void loop(){
         radio.write(transmitMessage,sizeof(transmitMessage));
       }
     }
-    else if(str_command=="GETTEMP"){
-      String message = String(temp,DEC);
-      message.toCharArray(mdata,sizeof(message));
-      writeFrame();
-
-      radio.stopListening();
-      radio.write(transmitMessage,sizeof(transmitMessage));
-    }
   }
-  temp = getTemp();
-  Serial.println(temp);
-  
-  if(temp>30){//SEND ALERT NOTIFICATION
-    radio.stopListening();
-    String sender = "2000";
-    String rcver = "0000";
-    String message = String(temp,DEC);
-    String str_command = "ALERT";
-    sender.toCharArray(address,sizeof(sender));
-    rcver.toCharArray(sender_address,sizeof(sender));
-    str_command.toCharArray(command,sizeof(str_command));
-    message.toCharArray(mdata,sizeof(message));
-    writeFrame();
-    
-    radio.openWritingPipe(parent);
-    radio.write(transmitMessage,sizeof(transmitMessage));
-    Serial.println(transmitMessage);
-    radio.startListening();
-    time = micros();
-//    
-  }
-  delay(300);
-}
-
-
-float getTemp(void){
-  //converting analog input to temperature value
-  //used LM35 for temp sensor
-    //Serial.println("messuring temperature");
-  temps = analogRead(A3);
-  //Serial.println(temps);
-  temps = (temps*5000)/1023;
-  temps = temps/10;
-  return temps;
- 
 }
 
 void writeFrame(){
@@ -180,7 +133,6 @@ void writeFrame(){
   counter=i;
   while(address[i-counter]!='\0'){
     transmitMessage[i]=address[i-counter];
-    Serial.println(transmitMessage[i]);
     i++;
   }
   transmitMessage[i]='`';
@@ -188,14 +140,12 @@ void writeFrame(){
   counter=i;
   while(sender_address[i-counter]!='\0'){
     transmitMessage[i]=sender_address[i-counter];
-    Serial.println(transmitMessage[i]);
     i++;
   }
   transmitMessage[i]='`';
   i++;
   counter=i;
   while(command[i-counter]!='\0'){
-    Serial.println(command[i-counter]);
     transmitMessage[i]=command[i-counter];
     i++;
   }
@@ -243,6 +193,5 @@ void readFrame(){
     mdata[i-counter]=receivedMessage[i];
     i++;
   }
-
 }
 
