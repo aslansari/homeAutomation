@@ -5,7 +5,7 @@ import MySQLdb
 
 def take_photo(photo_counter):
 	print("Taking a photo...")
-	os.system('fswebcam -r 1280x720 buffer.jpg')
+	os.system('fswebcam -r 640x360 buffer.jpg')
 	
 	if photo_counter==1:
 		os.system('sudo cp buffer.jpg /var/www/html/kamera/buffer1.jpg')
@@ -18,11 +18,10 @@ def take_photo(photo_counter):
 	elif photo_counter==5:
 		os.system('sudo cp buffer.jpg /var/www/html/kamera/buffer5.jpg')
 	
-
 def sec_photo():
 	print "Taking a photo..."
 
-	os.system('fswebcam -r 1280x720 buffer2.jpg')
+	os.system('fswebcam -r 640x360 buffer2.jpg')
 
 	now = datetime.datetime.now()
 	
@@ -41,7 +40,7 @@ def sec_photo():
 	str_db = str_db + "(" + "\'" + str_now + "\'" + ")"
 	
 	curs.execute(str_db)
-	photo_db.commit()
+	photo_db.commit() 
 
 def setFlagZero():
 	db = MySQLdb.connect("localhost","monitor","password","commands")
@@ -51,9 +50,59 @@ def setFlagZero():
 		cur.execute("update module SET flag=0 where flag=1")
 		cur.execute("update cmd SET flag=0 where flag=1")
 		cur.execute("update data SET flag=0 where flag=1")
+		cur.execute("update cmdready SET flag=0 where flag=1")
 		db.commit()
 		print "Flags resetted."
 	except:
 		db.rollback()
 		print "Flag reset failed!"
 
+def logSignIn(self):
+        db = MySQLdb.connect("localhost","monitor","password","logs")
+        cur = db.cursor()
+        print self
+        cur.execute("select * from signid")
+        for signId in cur.fetchall():
+                print signId[1]
+                if signId[1] == self:
+                        signinName = signId[0] 
+                        strdb = "insert into signin values"
+                        strdb = strdb + "(\'" + signinName + "\'" + ",current_date(),now())"
+                        print strdb
+                        try:
+                                cur.execute(strdb)
+                                db.commit()
+                                print "commited logs"
+                        except:
+                                db.rollback()
+
+                        return 1
+        return 0 #unregistered user
+
+
+def windowState(wState,node):
+        db = MySQLdb.connect("localhost","monitor","password","commands")
+        cur = db.cursor()
+        print wState
+        if wState == "OPEN":
+                strdb = "update status SET state=1 where node="
+                strdb = strdb + "'" + node + "'"
+                print strdb
+                cur.execute(strdb)
+                db.commit()
+        elif wState == "CLOSE":
+                strdb = "update status SET state=0 where node="
+                strdb = strdb + "'" + node + "'"
+                print strdb
+                cur.execute(strdb)
+                db.commit()
+
+
+
+
+
+
+
+
+
+                
