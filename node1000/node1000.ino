@@ -1,5 +1,15 @@
 #include <SPI.h>
 #include <RF24.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+
+// Data wire is plugged into pin 2 on the Arduino
+#define ONE_WIRE_BUS 5
+// Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
+OneWire oneWire(ONE_WIRE_BUS);
+// Pass our oneWire reference to Dallas Temperature. 
+DallasTemperature tempSensor(&oneWire);
 
 //ce , csn pins
 RF24 radio(9,10);
@@ -9,8 +19,9 @@ RF24 radio(9,10);
 #define DATA 28
 
 #define parent 0xF0F0F0F0E1LL
-#define childA 0xF0F0A010E1LL
-#define childB 0xF0F0B010E1LL
+#define alertPipe 0xc0c0c0c0a1LL
+#define childA 0xF0F0A020E1LL
+#define childB 0xF0F0B020E1LL
 #define deviceaddr "1000"
 /*    This module is one of the child of raspberryPi.
  *     1000 represents that the module is in the first layer of nodes
@@ -19,32 +30,35 @@ RF24 radio(9,10);
  *     if its '1B00' that module would be the second child module of 1000 
 */
 
+float temp;
+boolean writeFlag;
 int i=0;
 int counter=0;
-float temp,temps;
-boolean writeFlag;
+unsigned long time;
+
 char receivedMessage[32]={0};
-char transmitMessage[32]={};
+char transmitMessage[32]={0};
+char sender_address[5]={0};
 char address[5]={0};
-char sender_address[5]={};
 char command[17]={0};
 char mdata[9]={0};
-  
+
 void setup(){
   while(!Serial);
-  Serial.begin(9600);
   
+  Serial.begin(9600);
+  tempSensor.begin();
   radio.begin();
+  
   radio.setPALevel(RF24_PA_MAX);
   radio.setChannel(0x76);
-  radio.openWritingPipe(0xF0F0F0F0E1LL);
+  radio.openWritingPipe(parent);
   const uint64_t pipe = 0xE8E8F0F0E1LL;
   radio.openReadingPipe(1,pipe);
-    
   radio.enableDynamicPayloads();
   radio.powerUp();
-
-
+  
+  
 }
 
 void loop(){
@@ -56,77 +70,101 @@ void loop(){
     Serial.println(receivedMessage);
     Serial.println("Turning off the radio.");
     radio.stopListening();
-
-    readFrame();
-
-    if(address[0]=='1'&&address[1]=='0'&&address[2]=='0'&&address[3]=='0'){
-    	Serial.println("you are in the right node");
+    
+    readFrame();  //read received Frame and assign in dedicated array
+    String str_address = String(address);
+    if(str_address == deviceaddr){
+      Serial.println("you are in the right node");
     }
-    else if(address[0]=='0'&&address[1]=='0'&&address[2]=='0'&&address[3]=='0'){
-    	Serial.println("message is sending to raspverri pi");
-    	radio.openWritingPipe(parent);
-    	radio.write(receivedMessage,sizeof(receivedMessage));
+    else if(str_address=="0000"){
+      Serial.println("message is sending to raspverri pi");
+      radio.openWritingPipe(parent);
+      radio.write(receivedMessage,sizeof(receivedMessage));
     }
     else{
-    	for(int i=0;i<=3;i++){
-    		Serial.println(address[i]);
-    	}
-    	switch (address[1]){
-    		case 'A':
+      for(int i=0;i<=3;i++){
+        Serial.println(address[i]);
+      }
+      switch (address[1]){
+        case 'A':
         Serial.println("childA data sending..");
-    		radio.stopListening();
-    		radio.openWritingPipe(childA);
-    		radio.write(receivedMessage,sizeof(receivedMessage));
+        radio.stopListening();
+        radio.openWritingPipe(childA);
+        radio.write(receivedMessage,sizeof(receivedMessage));
         Serial.println("childA data has sent..");
-    		break;
-    		case 'B':
-    		radio.openWritingPipe(childB);
-    		radio.write(receivedMessage,sizeof(receivedMessage));
-    		break;
-    		default:
-    		Serial.println("adres bulunamadı");
-    		break;
-    	}
+        break;
+        case 'B':
+        radio.openWritingPipe(childB);
+        radio.write(receivedMessage,sizeof(receivedMessage));
+        break;
+        default:
+        Serial.println("address not found");
+        break;
+      }
     }
-
-    String commands = String(command);
-    Serial.println(commands);
-    if (commands == "GETTEMP"){
+    
+    String str_command = String(command); //transformation for if statement
+    Serial.println(str_command);
+    if (str_command == "GETTEMP"){
       Serial.println("Host asked for a temperature ");
-      //converting temperature value to string
+      //Serial.println(temp);
+      //converting temperature value to string and to char array
       String message = String(temp,DEC);
       message.toCharArray(mdata,sizeof(message));
+      
       writeFrame();//data ve ardeslerin gonderilecek mesaja yazilmasi
-      Serial.println(transmitMessage);
       radio.openWritingPipe(parent);
       writeFlag = radio.write(transmitMessage,sizeof(transmitMessage));
+      
       if(writeFlag){// Acknowledge flag for transmitting data
         Serial.println("Data sent succesfully.");
         writeFlag = 0;
       }
     }
-    
   }
   //temp data messured in every loop
   temp = getTemp();
+  Serial.println(temp);
+  
+  if(temp>35){//SEND ALERT NOTIFICATION
+    radio.stopListening();
+    String sender = deviceaddr;
+    String rcver = "0000";
+    String message = String(temp,DEC);
+    String str_command = "ALERT";
+    sender.toCharArray(address,sizeof(sender));
+    rcver.toCharArray(sender_address,sizeof(sender));
+    str_command.toCharArray(command,sizeof(str_command));
+    message.toCharArray(mdata,sizeof(message));
+    writeFrame();
+    
+    radio.openWritingPipe(parent);
+    radio.write(transmitMessage,sizeof(transmitMessage));
+    Serial.println(transmitMessage);
+    radio.startListening();
+    time = micros();
+    
+  }
+  delay(500);
 }
 
 float getTemp(void){
   //converting analog input to temperature value
   //used LM35 for temp sensor
     //Serial.println("messuring temperature");
-  temps = analogRead(A2);
-    //Serial.println(temps);
-  temps = (temps*5000)/1023;
-  temps = temps/10;
-  //Serial.println("Temperature ="+temps);
-  return temps;
+//  temps = analogRead(A2);
+//  //Serial.println(temps);
+//  temps = (temps*5000)/1023;
+//  temps = temps/10;
+
+  tempSensor.requestTemperatures();
+  
+  return tempSensor.getTempCByIndex(0);
+ 
 }
 
 void writeFrame(){
   i=0;
-  String debug = String(address);
-  Serial.println(debug);
   counter=i;
   while(address[i-counter]!='\0'){
     transmitMessage[i]=address[i-counter];
@@ -136,8 +174,6 @@ void writeFrame(){
   transmitMessage[i]='`';
   i++;
   counter=i;
-  debug = String(sender_address);
-  Serial.println(debug);
   while(sender_address[i-counter]!='\0'){
     transmitMessage[i]=sender_address[i-counter];
     Serial.println(transmitMessage[i]);
@@ -146,8 +182,6 @@ void writeFrame(){
   transmitMessage[i]='`';
   i++;
   counter=i;
-  debug = String(command);
-  Serial.println(debug);
   while(command[i-counter]!='\0'){
     Serial.println(command[i-counter]);
     transmitMessage[i]=command[i-counter];
@@ -160,37 +194,35 @@ void writeFrame(){
     transmitMessage[i]=mdata[i-counter];
     i++;
   }
-  for(int k=i;k<=32;k++){
-    transmitMessage[k]='`';
-  }
+  transmitMessage[i]='`';
   i=0;
 }
 
 void readFrame(){
-	i=0;
-	counter=i;
-	while(receivedMessage[i]!='`'){
-		sender_address[i-counter]=receivedMessage[i];
-		i++;
-	}
-	i++;// '`' karakteri geçiliyor
-	counter=i;	//counter eşitlenerek address dizisinin ilk elemanindan atanmasi saglaniyor
-	while(receivedMessage[i]!='`'){
-		address[i-counter]=receivedMessage[i];
-		i++;
-	}
-	i++;
-	counter=i;
-	while(receivedMessage[i]!='`'){
-		command[i-counter]=receivedMessage[i];
-		i++;
-	}
-	i++;
-	counter=i;
-	while(receivedMessage[i]!='`'){
-		mdata[i-counter]=receivedMessage[i];
-		i++;
-	}
+  i=0;
+  counter=i;
+  while(receivedMessage[i]!='`'){
+    sender_address[i-counter]=receivedMessage[i];
+    i++;
+  }
+  i++;// '`' karakteri geçiliyor
+  counter=i;  //counter eşitlenerek address dizisinin ilk elemanindan atanmasi saglaniyor
+  while(receivedMessage[i]!='`'){
+    address[i-counter]=receivedMessage[i];
+    i++;
+  }
+  i++;
+  counter=i;
+  while(receivedMessage[i]!='`'){
+    command[i-counter]=receivedMessage[i];
+    i++;
+  }
+  i++;
+  counter=i;
+  while(receivedMessage[i]!='`'){
+    mdata[i-counter]=receivedMessage[i];
+    i++;
+  }
 
 }
 
