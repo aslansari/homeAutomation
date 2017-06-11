@@ -76,7 +76,7 @@ def nodeAccess(accdvaddress,accaddress,acccommand,accdata):
         while not radio.available(0):
 		time.sleep(1/100)
 		if time.time() - start > 2:
-			print("Timed out.")
+			print("Communication timed out.")
 			toFlag = 1
 			return 0
         if not toFlag == 1:
@@ -99,7 +99,7 @@ def nodeAccess(accdvaddress,accaddress,acccommand,accdata):
 	
 def getTemp(self):
         if self == "":
-                targetNode = "3000"
+                targetNode = "1000"
         else:
                 targetNode = self
 	msgtoSend = "0000`"
@@ -189,13 +189,13 @@ def fetchCommand():
 									data="default"
 
                         sendmessage = dvaddress +'`'+ address +'`'+ command +'`'+ data +'`' #gonderilecek mesajin olusturulmasi
-                        print(sendmessage)
+##                        print(sendmessage)
                         return sendmessage
                 else:
                         return ""
 
 def alertProcess():
-        print "send e-mail"
+        print "Sending e-mail notification"
 #        mailnotification.sendMail() #sends mail about the alert situation
         for x in range(3):
                 success = nodeAccess("0000","3000","LIGHT","ON")
@@ -209,7 +209,7 @@ def alertProcess():
                 success = nodeAccess("0000","4000","PLUG","OFF")
                 if success!=0:
                         break
-##        if x in range(3):
+##        for x in range(3):
 ##                success = nodeAccess("7000","CONN","CLOSE")
 ##                if success!=0:
 ##                        break
@@ -306,75 +306,61 @@ while True:
 
 				
 			
-		else:	#send message via radio if address is not pi's
-			start = time.time()
-			radio.stopListening()
-			radio.write(sendmessage)
-			print("Sent the message: {}".format(sendmessage))
-			radio.startListening() #pi starts to listen after sending the "message"
-				
-			toFlag = 0
-			while not radio.available(0):
-				time.sleep(1/100)
-				if time.time() - start > 1:
-					print("Timed out.")
-					toFlag = 1
-					break
-			
-			
-			if not toFlag == 1:
-			
-				receivedMessage = []
-				del receivedMessage[:]
-				radio.read(receivedMessage, radio.getDynamicPayloadSize())
-				print "dbrecvMessage"
-				print("Received:{}".format(receivedMessage))
-				print("Translating our received message into unicode characters..")
-				string=""
-		
-				for n in receivedMessage:
-					if(n >= 32 and n <= 126):
-						string +=chr(n)
-				print("Our received message decodes to: {}".format(string))
-			
-			
-				if string != "":	
-					splitFrame = string.split("`") # gelen mesajı ` karakterine göre parçalıyoruz
-			
-					dvaddress = splitFrame[0]
-					address = splitFrame[1]
-					command = splitFrame[2]
-					data = splitFrame[3]
-				
-	
-					if command=="LIGHT":
-						if data =="ACK":
-							print "light turned on succesfully"
-							functions.setFlagZero()
-							data = ""
-	
-						if data == "NACK":
-							print "Attempt failed!"
-							data = ""
+		else:
+                        accessFlag = 0
+                        for x in range(3):
+                                messageFrame = nodeAccess(dvaddress,address,command,data)
+                                if messageFrame != 0:
+                                        accessFlag = 1
+                                        break
+                        if accessFlag == 0:
+                                functions.setFlagZero()
+                        if accessFlag == 1:
+                                dvaddress = messageFrame[0]
+                                address = messageFrame[1]
+                                command = messageFrame[2]
+                                data = messageFrame[3]
+                        
+                                if command=="LIGHT":
+                                        if data =="ACK":
+                                                print "light turned on succesfully"
+                                                functions.dbStateToggle(dvaddress) #toggles state variable in db for given address
+                                                functions.setFlagZero()
+                                                data = ""
 
-					if command=="PLUG":
-                                                if data == "ACK":
-                                                        print "plug diactivated succesfully"
-                                                        functions.setFlagZero()
-                                                        data = ""
-                                                if data == "NACK":
-                                                        print "Attempt failed!"
-                                                        data == ""
-                                                        
-                                        if command == "VALVE":
-                                                if data == "ACK":
-                                                        print "operation succesful"
-                                                        functions.setFlagZero()
-                                                        data = ""
-                                                if data == "NACK":
-                                                        print "Attempt failed!"
-                                                        data = ""
+                                        if data == "NACK":
+                                                print "Attempt failed!"
+                                                data = ""
 
+                                if command=="PLUG":
+                                        if data == "ACK":
+                                                print "plug diactivated succesfully"
+                                                functions.dbStateToggle(dvaddress)
+                                                functions.setFlagZero()
+                                                data = ""
+                                        if data == "NACK":
+                                                print "Attempt failed!"
+                                                data == ""
+                                                
+                                if command == "VALVE":
+                                        if data == "ACK":
+                                                print "operation succesful"
+                                                functions.dbStateToggle(dvaddress)
+                                                functions.setFlagZero()
+                                                data = ""
+                                        if data == "NACK":
+                                                print "Attempt failed!"
+                                                data = ""
+
+                                if command == "CAPTURE":
+                                        if data == "ACK":
+                                                print "operation succesful"
+                                                functions.setFlagZero()
+                                                data = ""
+                                        if data == "NACK": 
+                                                print "Attempt failed!"
+                                                data = ""
+                                accessFlag = 0
 
 
 		sendmessage="0000```default`"
