@@ -63,12 +63,10 @@ def logSignIn(self):
         print self
         cur.execute("select * from signid")
         for signId in cur.fetchall():
-                print signId[1]
                 if signId[1] == self:
                         signinName = signId[0] 
                         strdb = "insert into signin values"
                         strdb = strdb + "(\'" + signinName + "\'" + ",current_date(),now())"
-                        print strdb
                         try:
                                 cur.execute(strdb)
                                 db.commit()
@@ -83,20 +81,34 @@ def logSignIn(self):
 def windowState(wState,node):
         db = MySQLdb.connect("localhost","monitor","password","commands")
         cur = db.cursor()
-        print wState
         if wState == "OPEN":
                 strdb = "update status SET state=1 where node="
                 strdb = strdb + "'" + node + "'"
-                print strdb
                 cur.execute(strdb)
                 db.commit()
         elif wState == "CLOSE":
                 strdb = "update status SET state=0 where node="
                 strdb = strdb + "'" + node + "'"
-                print strdb
                 cur.execute(strdb)
                 db.commit()
 
+def dbStateToggle(node):
+        db = MySQLdb.connect("localhost","monitor","password","commands")
+        cur = db.cursor()
+        strdb = "select state from status where node="
+        strdb = strdb + "'" + node + "'"
+        cur.execute(strdb)
+        state = cur.fetchone()
+        if lightstate[0] == 1:
+                strdb = "update status SET state=0 where node="
+                strdb = strdb + "'" + node + "'"
+                cur.execute(strdb)
+                db.commit()
+        elif lightstate[0] == 0:
+                strdb = "update status SET state=1 where node="
+                strdb = strdb + "'" + node + "'"
+                cur.execute(strdb)
+                db.commit()
 
 
 
