@@ -68,7 +68,7 @@ def nodeAccess(accdvaddress,accaddress,acccommand,accdata):
         start = time.time()
         radio.stopListening()
         radio.write(sendmessage)
-        print sendmessage
+##        print sendmessage
         print("Sent the message: {}".format(sendmessage))
         radio.startListening()
         toFlag = 0
@@ -83,8 +83,8 @@ def nodeAccess(accdvaddress,accaddress,acccommand,accdata):
                 receivedMessage = []
                 del receivedMessage[:]
                 radio.read(receivedMessage, radio.getDynamicPayloadSize())
-		print("Received:{}".format(receivedMessage))
-		print("Translating our received message into unicode characters..")
+##		print("Received:{}".format(receivedMessage))
+##		print("Translating our received message into unicode characters..")
 		string=""
 		for n in receivedMessage:
 			if(n >= 32 and n <= 126):
@@ -92,6 +92,14 @@ def nodeAccess(accdvaddress,accaddress,acccommand,accdata):
 		print("Our received message decodes to: {}".format(string))
 		if string != "":			
 			splitFrame = string.split("`") # gelen mesajı ` karakterine göre parçalıyoruz
+			try:
+                                dvaddress = splitFrame[0]
+                                address = splitFrame[1]
+                                command = splitFrame[2]
+                                data = splitFrame[3]
+                        except IndexError:
+                                print "IndexError"
+                                return 0
 				
 		return splitFrame
                 
@@ -102,42 +110,21 @@ def getTemp(self):
                 targetNode = "1000"
         else:
                 targetNode = self
-	msgtoSend = "0000`"
-	msgtoSend = msgtoSend + targetNode +"`GETTEMP``"
-	print msgtoSend
-	start = time.time()
-	radio.stopListening()
-	radio.write(msgtoSend)
-	print("Sent the message: {}".format(msgtoSend))
-	radio.startListening() #pi starts to listen after sending the "message"
-	toFlag=0
-	while not radio.available(0):
-		time.sleep(1/100)
-		if time.time() - start > 2:
-			print("Timed out.")
-			toFlag = 1
-			break
 
-	if not toFlag == 1:
-
-		receivedMessage = []
-		del receivedMessage[:]
-		radio.read(receivedMessage, radio.getDynamicPayloadSize())
-		print("Received:{}".format(receivedMessage))
-		print("Translating our received message into unicode characters..")
-		string=""
-		for n in receivedMessage:
-			if(n >= 32 and n <= 126):
-				string +=chr(n)
-		print("Our received message decodes to: {}".format(string))
-		if string != "":			
-			splitFrame = string.split("`") # gelen mesajı ` karakterine göre parçalıyoruz
-				
-		dvaddress = splitFrame[0]
-		ddress = splitFrame[1]
-		command = splitFrame[2]
-		data = splitFrame[3]
-				
+        accessFlag = 0
+        print("request time: ",datetime.datetime.now())
+        for x in range(3):
+                messageFrame = nodeAccess("0000",targetNode,"GETTEMP","")
+                if messageFrame != 0:
+                        accessFlag = 1
+                        break
+        
+        if accessFlag == 1:
+                dvaddress = messageFrame[0]
+                address = messageFrame[1]
+                command = messageFrame[2]
+                data = messageFrame[3]
+                			
 		if(command=="GETTEMP"):
 			print("writing temp data on database")
 			tempdb = MySQLdb.connect('localhost','monitor','password','sensors')
@@ -145,15 +132,14 @@ def getTemp(self):
 			str_db = "insert into tempdat values(CURRENT_DATE(),NOW(),"
 			str_db = str_db + "\'" + dvaddress + "\'" +","
 			str_db = str_db + data + ")" #gelen datalar ile mesaj oluşturuldu
-			print(str_db)
 			try:
 				temp_cur.execute(str_db) #bilgiler database'e giriliyor
 				tempdb.commit()
 				address = ""
 				command = ""
 				data = ""
+				print("committime: ",datetime.datetime.now())
 				print("all flags are zero")
-				print("address=",address," command=",command," data=",data)
 			except:
 				tempdb.rollback()
 				print("database rolledback. Couldn't commit")
@@ -173,17 +159,17 @@ def fetchCommand():
                                         address=reading[0]
 
                                         cur.execute("select * from cmd")
-                                        print(address)
+##                                        print(address)
                                         for cmd in cur.fetchall():
                                                 if cmd[1]==1:
                                                         command = cmd[0]
-                                                        print(command)
+##                                                        print(command)
                                                         cur.execute("select * from data")
                                                         for dat in cur.fetchall():#########################################
                                                               	dataFlag=dat[2]#default olma durumu ile ilgili bir statement eklenecek
                                                         	if(dataFlag==1):
                                                                 	data=dat[1]
-									print data
+##									print data
 									break
                                                                 else:
 									data="default"
@@ -227,7 +213,6 @@ while True:
 	while not radio.available(0):
 		time.sleep(1/100)
 		if time.time() - start >0.5:
-			print "No message received."
 			messageFlag = 0
 			break
 	if(radio.available()):
@@ -243,47 +228,48 @@ while True:
 		
 		print("format into{}:".format(rcvString))
 		rcvSplitFrame = rcvString.split("`")
+		try:
+                        dvaddress = rcvSplitFrame[0]
+                        address = rcvSplitFrame[1]
+                        command = rcvSplitFrame[2]
+                        data = rcvSplitFrame[3]
+                        msg_time = datetime.datetime.now()
 		
-		dvaddress = rcvSplitFrame[0]
-		address = rcvSplitFrame[1]
-		command = rcvSplitFrame[2]
-		data = rcvSplitFrame[3]
-		msg_time = datetime.datetime.now()
-		
-		if(command == "ALERT"):
-                        alertProcess()
-##			if((msg_time.year>alert_time.year) | (msg_time.month>alert_time.month) | (msg_time.day>=alert_time.day)):
-##                                if((msg_time.hour==alert_time.hour) & (msg_time.minute>alert_time.minute+3 )):
-##                                        alert_time = msg_time
-##                                	alertProcess()
-##			
-##                        elif(msg_time.hour>alert_time.hour):
-##                                alert_time = msg_time
-##                                alertProcess()
-		
-
-		if(command == "ID"):
-                        logFlag = functions.logSignIn(data)#yollanan mesajin 
-                        print "logFlag:",logFlag
-                        if logFlag == 1:
-                                radio.stopListening()
-                                time.sleep(1/4)
-                                radio.write("0000`5000`ID`OK`")
-                                print "ID confirmed."
-                                
-                        elif logFlag == 0: 
-                                radio.stopListening()
-                                time.sleep(1/4)
-                                radio.write("0000`5000`ID`NOT`")
-                                print "ID denied!"
-
-                if(command == "WINDOW"):
-                        functions.windowState(data,address)
-                        radio.stopListening()
-                        str_message = "0000`"
-                        str_message = str_message + address + "`WINDOW`ACK`"
-                        radio.write(str_message)
+                        if(command == "ALERT"):
+                                alertProcess()
+        ##			if((msg_time.year>alert_time.year) | (msg_time.month>alert_time.month) | (msg_time.day>=alert_time.day)):
+        ##                                if((msg_time.hour==alert_time.hour) & (msg_time.minute>alert_time.minute+3 )):
+        ##                                        alert_time = msg_time
+        ##                                	alertProcess()
+        ##			
+        ##                        elif(msg_time.hour>alert_time.hour):
+        ##                                alert_time = msg_time
+        ##                                alertProcess()
                         
+
+                        if(command == "ID"):
+                                logFlag = functions.logSignIn(data)#yollanan mesajin 
+                                print "logFlag:",logFlag
+                                if logFlag == 1:
+                                        radio.stopListening()
+                                        time.sleep(1/4)
+                                        radio.write("0000`5000`ID`OK`")
+                                        print "ID confirmed."
+                                        
+                                elif logFlag == 0: 
+                                        radio.stopListening()
+                                        time.sleep(1/4)
+                                        radio.write("0000`5000`ID`NOT`")
+                                        print "ID denied!"
+
+                        if(command == "WINDOW"):
+                                functions.windowState(data,address)
+                                radio.stopListening()
+                                str_message = "0000`"
+                                str_message = str_message + address + "`WINDOW`ACK`"
+                                radio.write(str_message)
+                except IndexError:
+                        print"indexerror"
 ##############################
 	sendmessage = fetchCommand()
 
@@ -368,11 +354,7 @@ while True:
 	time.sleep(1/10)
 	now = datetime.datetime.now()
 	now_min = now.minute
-	now_hour = now.hour
-	print("then hour= ", then_hour)
-	print("now hour= ", now_hour)
-	print("now minute= ", now_min)
-	print("then minute= ", then_min)	
+	now_hour = now.hour	
 	
 	if ((now_min>=then_min) & (then_hour==now_hour)):
 ##		functions.sec_photo()

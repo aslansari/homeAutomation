@@ -99,16 +99,19 @@ def dbStateToggle(node):
         strdb = strdb + "'" + node + "'"
         cur.execute(strdb)
         state = cur.fetchone()
-        if lightstate[0] == 1:
-                strdb = "update status SET state=0 where node="
-                strdb = strdb + "'" + node + "'"
-                cur.execute(strdb)
-                db.commit()
-        elif lightstate[0] == 0:
-                strdb = "update status SET state=1 where node="
-                strdb = strdb + "'" + node + "'"
-                cur.execute(strdb)
-                db.commit()
+        try:
+                if state[0] == 1:
+                        strdb = "update status SET state=0 where node="
+                        strdb = strdb + "'" + node + "'"
+                        cur.execute(strdb)
+                        db.commit()
+                elif state[0] == 0:
+                        strdb = "update status SET state=1 where node="
+                        strdb = strdb + "'" + node + "'"
+                        cur.execute(strdb)
+                        db.commit()
+        except TypeError:
+                print "TypeError"
 
 
 
