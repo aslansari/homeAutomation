@@ -11,12 +11,43 @@ import ftplib
 import functions
 import datetime
 import mailnotification
+import logging
 
+#Logging config
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(levelname)s:%(name)s:%(asctime)s:%(message)s')
+
+fhInfo = logging.FileHandler('logs/info.log')
+fhInfo.setLevel(logging.INFO)
+fhDebug = logging.FileHandler('logs/debug.log')
+fhDebug.setLevel(logging.DEBUG)
+fhError = logging.FileHandler('logs/error.log')
+fhError.setLevel(logging.ERROR)
+fhWarning = logging.FileHandler('logs/warning.log')
+fhWarning.setLevel(logging.WARNING)
+fhInfo.setFormatter(formatter)
+fhDebug.setFormatter(formatter)
+fhWarning.setFormatter(formatter)
+fhError.setFormatter(formatter)
+
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+
+logger.addHandler(fhInfo)
+logger.addHandler(fhDebug)
+logger.addHandler(fhWarning)
+logger.addHandler(fhError)
+logger.addHandler(stream_handler)
+
+#radio config
 pipes=[[0xE8, 0xE8, 0xF0, 0xF0,0xE1],[0xF0, 0xF0, 0xF0, 0xF0, 0xE1]]
 
 radio = NRF24(GPIO, spidev.SpiDev()) #Radio nesnesi tanımlandı
 radio.begin(0,25)
-#radio config
+
 radio.setPayloadSize(32)
 radio.setChannel(0x76)
 radio.setDataRate(NRF24.BR_1MBPS)
@@ -68,15 +99,14 @@ def nodeAccess(accdvaddress,accaddress,acccommand,accdata):
         start = time.time()
         radio.stopListening()
         radio.write(sendmessage)
-##        print sendmessage
-        print("Sent the message: {}".format(sendmessage))
+        logger.debug("Sent the message: {}".format(sendmessage))
         radio.startListening()
         toFlag = 0
 
         while not radio.available(0):
 		time.sleep(1/100)
 		if time.time() - start > 2:
-			print("Communication timed out.")
+			logger.debug("Communication timed out.")
 			toFlag = 1
 			return 0
         if not toFlag == 1:
@@ -89,7 +119,7 @@ def nodeAccess(accdvaddress,accaddress,acccommand,accdata):
 		for n in receivedMessage:
 			if(n >= 32 and n <= 126):
 				string +=chr(n)
-		print("Our received message decodes to: {}".format(string))
+		logger.debug("Our received message decodes to: {}".format(string))
 		if string != "":			
 			splitFrame = string.split("`") # gelen mesajı ` karakterine göre parçalıyoruz
 			try:
@@ -98,7 +128,7 @@ def nodeAccess(accdvaddress,accaddress,acccommand,accdata):
                                 command = splitFrame[2]
                                 data = splitFrame[3]
                         except IndexError:
-                                print "IndexError"
+                                logger.exception('IndexError')
                                 return 0
 				
 		return splitFrame
@@ -112,12 +142,14 @@ def getTemp(self):
                 targetNode = self
 
         accessFlag = 0
-        print("request time: ",datetime.datetime.now())
+        logger.info("Requesting temperature data")        
         for x in range(3):
                 messageFrame = nodeAccess("0000",targetNode,"GETTEMP","")
                 if messageFrame != 0:
                         accessFlag = 1
                         break
+        if accessFlag == 0:
+                logger.warning("temperature data couldnt received")
         
         if accessFlag == 1:
                 dvaddress = messageFrame[0]
@@ -126,7 +158,7 @@ def getTemp(self):
                 data = messageFrame[3]
                 			
 		if(command=="GETTEMP"):
-			print("writing temp data on database")
+			logger.info("Temperature data received, logging to database")
 			tempdb = MySQLdb.connect('localhost','monitor','password','sensors')
 			temp_cur = tempdb.cursor()
 			str_db = "insert into tempdat values(CURRENT_DATE(),NOW(),"
@@ -138,11 +170,10 @@ def getTemp(self):
 				address = ""
 				command = ""
 				data = ""
-				print("committime: ",datetime.datetime.now())
-				print("all flags are zero")
+				logger.info("Temp data logged to database")
 			except:
 				tempdb.rollback()
-				print("database rolledback. Couldn't commit")
+				logger.warning("database rolledback. Couldn't commit")
 	
 def fetchCommand():
     	db = MySQLdb.connect("localhost","monitor","password","commands")
@@ -151,7 +182,7 @@ def fetchCommand():
         cur.execute("select * from cmdready")
         for reading in cur.fetchall():
                 if reading[1]==1:
-                        print "Command is ready to send"
+                        logger.info("Command is ready to send")
                         
                         cur.execute("select * from module")
                         for reading in cur.fetchall():
@@ -159,29 +190,26 @@ def fetchCommand():
                                         address=reading[0]
 
                                         cur.execute("select * from cmd")
-##                                        print(address)
                                         for cmd in cur.fetchall():
                                                 if cmd[1]==1:
                                                         command = cmd[0]
-##                                                        print(command)
                                                         cur.execute("select * from data")
                                                         for dat in cur.fetchall():#########################################
                                                               	dataFlag=dat[2]#default olma durumu ile ilgili bir statement eklenecek
                                                         	if(dataFlag==1):
                                                                 	data=dat[1]
-##									print data
 									break
                                                                 else:
 									data="default"
 
                         sendmessage = dvaddress +'`'+ address +'`'+ command +'`'+ data +'`' #gonderilecek mesajin olusturulmasi
-##                        print(sendmessage)
+                        logger.debug("message to send: " + sendmessage)
                         return sendmessage
                 else:
                         return ""
 
 def alertProcess():
-        print "Sending e-mail notification"
+        logger.info("Sending e-mail notification")
 #        mailnotification.sendMail() #sends mail about the alert situation
         for x in range(3):
                 success = nodeAccess("0000","3000","LIGHT","ON")
@@ -219,18 +247,17 @@ while True:
 		rcvMessage = []
 		del rcvMessage[:]
 		radio.read(rcvMessage, radio.getDynamicPayloadSize())
-		print "rcvmessage"
-		print("Received:{}".format(rcvMessage))
+		
+		logger.debug(rcvMessage)
 		rcvString = ""
 		for n in rcvMessage:
 			if(n >= 32 and n<=126):
 				rcvString += chr(n)
 		
-		print("format into{}:".format(rcvString))
 		rcvSplitFrame = rcvString.split("`")
 		try:
                         dvaddress = rcvSplitFrame[0]
-                        address = rcvSplitFrame[1]
+                        address = rcvSplitFrame[1] 
                         command = rcvSplitFrame[2]
                         data = rcvSplitFrame[3]
                         msg_time = datetime.datetime.now()
@@ -269,7 +296,7 @@ while True:
                                 str_message = str_message + address + "`WINDOW`ACK`"
                                 radio.write(str_message)
                 except IndexError:
-                        print"indexerror"
+                        logger.exeption("Message couldn't split.")
 ##############################
 	sendmessage = fetchCommand()
 
@@ -284,7 +311,7 @@ while True:
 			if(command=="CAPTURE"):#requested duty
 				functions.take_photo(photo_counter)
 				photo_counter+=1
-				print("photo counter = ",photo_counter)
+				logger.debug("photo counter = ",photo_counter)
 				if photo_counter>=6:
 					photo_counter = 1
 
@@ -309,42 +336,42 @@ while True:
                         
                                 if command=="LIGHT":
                                         if data =="ACK":
-                                                print "light turned on succesfully"
+                                                logger.info("light turned on succesfully")
                                                 functions.dbStateToggle(dvaddress) #toggles state variable in db for given address
                                                 functions.setFlagZero()
                                                 data = ""
 
                                         if data == "NACK":
-                                                print "Attempt failed!"
+                                                logger.wanring("Attempt failed!")
                                                 data = ""
 
                                 if command=="PLUG":
                                         if data == "ACK":
-                                                print "plug diactivated succesfully"
+                                                logger.info("plug diactivated succesfully")
                                                 functions.dbStateToggle(dvaddress)
                                                 functions.setFlagZero()
                                                 data = ""
                                         if data == "NACK":
-                                                print "Attempt failed!"
+                                                logger.warning("Attempt failed!")
                                                 data == ""
                                                 
                                 if command == "VALVE":
                                         if data == "ACK":
-                                                print "operation succesful"
+                                                logger.info("operation succesful")
                                                 functions.dbStateToggle(dvaddress)
                                                 functions.setFlagZero()
                                                 data = ""
                                         if data == "NACK":
-                                                print "Attempt failed!"
+                                                logger.warning("Attempt failed!")
                                                 data = ""
 
                                 if command == "CAPTURE":
                                         if data == "ACK":
-                                                print "operation succesful"
+                                                logger.info("operation succesful")
                                                 functions.setFlagZero()
                                                 data = ""
                                         if data == "NACK": 
-                                                print "Attempt failed!"
+                                                logger.warning("Attempt failed!")
                                                 data = ""
                                 accessFlag = 0
 

@@ -1,10 +1,25 @@
 import os
 import datetime
 import MySQLdb
+import logging
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+formatter = logging.Formatter('%(levelname)s:%(name)s:%(asctime)s:%(message)s')
+
+file_handler = logging.FileHandler('main_program_error.log')
+file_handler.setLevel(logging.ERROR)
+file_handler.setFormatter(formatter)
+
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
 
 def take_photo(photo_counter):
-	print("Taking a photo...")
+	logger.info("Taking a photo...")
 	os.system('fswebcam -r 640x360 buffer.jpg')
 	
 	if photo_counter==1:
@@ -19,7 +34,7 @@ def take_photo(photo_counter):
 		os.system('sudo cp buffer.jpg /var/www/html/kamera/buffer5.jpg')
 	
 def sec_photo():
-	print "Taking a photo..."
+	logger.info("Taking a photo...")
 
 	os.system('fswebcam -r 640x360 buffer2.jpg')
 
@@ -52,15 +67,14 @@ def setFlagZero():
 		cur.execute("update data SET flag=0 where flag=1")
 		cur.execute("update cmdready SET flag=0 where flag=1")
 		db.commit()
-		print "Flags resetted."
+		logger.debug("Flags resetted.")
 	except:
 		db.rollback()
-		print "Flag reset failed!"
+		logger.error("Flag reset failed!")
 
 def logSignIn(self):
         db = MySQLdb.connect("localhost","monitor","password","logs")
         cur = db.cursor()
-        print self
         cur.execute("select * from signid")
         for signId in cur.fetchall():
                 if signId[1] == self:
@@ -70,9 +84,10 @@ def logSignIn(self):
                         try:
                                 cur.execute(strdb)
                                 db.commit()
-                                print "commited logs"
+                                logger.debug("commited logs")
                         except:
                                 db.rollback()
+                                logger.error("database rolled back, couldn't log signin data")
 
                         return 1
         return 0 #unregistered user
@@ -111,7 +126,7 @@ def dbStateToggle(node):
                         cur.execute(strdb)
                         db.commit()
         except TypeError:
-                print "TypeError"
+                logger.exception("TypeError")
 
 
 
